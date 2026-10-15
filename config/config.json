@@ -1,0 +1,7 @@
+
+{
+  "base_url": "https://example.com",
+  "browser": "chromium",
+  "timeout": 30000,
+  "environment": "staging"
+}
