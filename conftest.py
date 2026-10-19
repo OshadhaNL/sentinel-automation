@@ -1,6 +1,5 @@
-
-import pytest
 from dotenv import load_dotenv
+import pytest
 
 load_dotenv()
 

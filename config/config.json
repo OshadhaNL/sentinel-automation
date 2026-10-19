@@ -1,7 +1,7 @@
 
 {
-  "base_url": "https://example.com",
+  "base_url": "https://sentinel-austrac-qa.northlark.com/nolimit/login",
   "browser": "chromium",
   "timeout": 30000,
-  "environment": "staging"
+  "environment": "qa"
 }
