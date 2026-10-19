@@ -16,9 +16,6 @@ class TestDashboard:
         page: Page,
         base_url: str,
     ):
-        """
-        Log in first, then open Dashboard using the sidebar.
-        """
         self.page = page
 
         # Login
