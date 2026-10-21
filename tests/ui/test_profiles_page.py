@@ -6,7 +6,6 @@ from playwright.sync_api import Page, expect
 from pages.loginPage import LoginPage
 from pages.profilesPage import ProfilesPage
 
-
 @pytest.mark.ui
 @pytest.mark.smoke
 class TestProfiles:
