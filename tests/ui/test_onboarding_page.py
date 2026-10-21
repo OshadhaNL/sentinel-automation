@@ -321,3 +321,116 @@ class TestOnboarding:
 
         self.onboarding.click_agree()
         self.onboarding.verify_consent_popup_closed()
+
+    # --------------------------------------------------
+    # Pending Onboarding button and search
+    # --------------------------------------------------
+
+    def test_pending_onboarding_button_and_pause_icon(self):
+        """Verify Pending Onboarding button and its pause-circle icon."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_onboarding_button_visible()
+        self.onboarding.verify_pending_onboarding_pause_icon()
+
+    def test_pending_search_field_is_visible(self):
+        """Verify the Pending Onboarding search field is visible."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_search_field_visible()
+
+    def test_pending_search_clear_button_is_hidden_initially(self):
+        """Verify clear/cancel is hidden while the search field is empty."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_search_field_visible()
+        self.onboarding.verify_pending_search_clear_button_hidden()
+
+    def test_pending_search_clear_button_appears_after_typing(self):
+        """Verify clear/cancel appears after entering search text."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.enter_pending_search_text("Test")
+        self.onboarding.verify_pending_search_clear_button_visible()
+
+    def test_pending_search_clear_button_clears_text(self):
+        """Verify clear/cancel clears the search field."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.enter_pending_search_text("Test")
+        self.onboarding.verify_pending_search_clear_button_visible()
+
+        self.onboarding.click_pending_search_clear_button()
+
+        self.onboarding.verify_pending_search_field_empty()
+        self.onboarding.verify_pending_search_clear_button_hidden()
+
+    def test_pending_search_button_is_visible_and_clickable(self):
+        """Verify the search button is visible and can be clicked."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_search_button_visible()
+        self.onboarding.click_pending_search_button()
+
+    # --------------------------------------------------
+    # Created By / analyst filter
+    # --------------------------------------------------
+
+    def test_created_by_label_and_analyst_filter_are_visible(self):
+        """Verify Created By label and analyst dropdown are visible."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_created_by_label_visible()
+        self.onboarding.verify_analyst_filter_visible()
+
+    @pytest.mark.parametrize(
+        "analyst_name",
+        [
+            "Oshadha Weerakon",
+            "Senith Admin",
+        ],
+    )
+    def test_filter_pending_records_by_analyst(self, analyst_name):
+        """Verify records shown after selecting an analyst belong to them."""
+
+        # Refresh only for these analyst filter test cases.
+        self.page.reload()
+        self.page.reload()
+        self.page.wait_for_load_state("domcontentloaded")
+
+        # Open Pending Onboarding after refresh.
+        self.onboarding.click_pending_onboarding()
+
+        self.onboarding.select_analyst(analyst_name)
+        self.onboarding.verify_selected_analyst_records(analyst_name)
+
+    # --------------------------------------------------
+    # Pending Onboarding table
+    # --------------------------------------------------
+
+    def test_pending_onboarding_table_is_visible(self):
+        """Verify the Pending Onboarding table is visible."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_table_visible()
+
+    def test_pending_onboarding_table_headers(self):
+        """Verify all Pending Onboarding table headings and their order."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_table_visible()
+        self.onboarding.verify_pending_table_headers()
+
+    # --------------------------------------------------
+    # Reference ID navigation
+    # --------------------------------------------------
+
+    def test_reference_id_opens_entity_onboarding_process(self):
+        """Verify clicking a Reference ID opens its entity process page."""
+        self.onboarding.click_pending_onboarding()
+        self.onboarding.verify_pending_table_visible()
+
+        reference_id = (
+            self.onboarding.pending_table_rows
+            .first
+            .locator("td")
+            .first
+            .inner_text()
+            .strip()
+        )
+
+        assert reference_id, "The first Reference ID is empty."
+
+        self.onboarding.click_reference_id(reference_id)
+        self.onboarding.verify_reference_id_navigation(reference_id)
