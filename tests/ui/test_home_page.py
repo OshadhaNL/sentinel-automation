@@ -1,4 +1,7 @@
 
+import os
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -6,55 +9,43 @@ from pages.loginPage import LoginPage
 from pages.homePage import HomePage
 
 
-# Replace these with your real test account credentials
-VALID_EMAIL = "oshadha@northlark.com"
-VALID_PASSWORD = "5e11Piwu"
-
-# Replace with your actual Home page URL
-HOME_URL = "https://sentinel-austrac-qa.northlark.com/nolimit/app/home"
-
-
 @pytest.mark.ui
-@pytest.mark.smoke
-def test_welcome_heading_displayed(page: Page, base_url: str):
-    login = LoginPage(page)
-    login.open(base_url)
-    login.enter_email(VALID_EMAIL)
-    login.enter_password(VALID_PASSWORD)
-    login.click_login()
+class TestHomePage:
 
-    expect(page).to_have_url(HOME_URL)
+    @pytest.fixture(autouse=True)
+    def setup_home(self, page: Page, base_url: str):
+        self.page = page
 
-    home = HomePage(page)
-    home.check_welcome_heading()
+        # Read credentials
+        email = os.getenv("TEST_EMAIL")
+        password = os.getenv("TEST_PASSWORD")
 
+        assert email, "Please set TEST_EMAIL."
+        assert password, "Please set TEST_PASSWORD."
 
-@pytest.mark.ui
-def test_user_name_displayed(page: Page, base_url: str):
-    login = LoginPage(page)
-    login.open(base_url)
-    login.enter_email(VALID_EMAIL)
-    login.enter_password(VALID_PASSWORD)
-    login.click_login()
+        # Login
+        self.login_page = LoginPage(page)
+        self.login_page.open(base_url)
+        self.login_page.enter_email(email)
+        self.login_page.enter_password(password)
+        self.login_page.click_login()
 
-    expect(page).to_have_url(HOME_URL)
+        # Verify successful navigation
+        expect(page).to_have_url(
+            re.compile(r".*/nolimit/app/home/?$")
+        )
 
-    home = HomePage(page)
-    home.check_user_name()
+        # Initialize Home page
+        self.home_page = HomePage(page)
 
+    def test_welcome_heading(self):
+        self.home_page.verify_welcome_heading()
 
-@pytest.mark.ui
-def test_welcome_description_displayed(
-    page: Page, base_url: str
-):
-    login = LoginPage(page)
-    login.open(base_url)
-    login.enter_email(VALID_EMAIL)
-    login.enter_password(VALID_PASSWORD)
-    login.click_login()
+    def test_username_visible(self):
+        self.home_page.verify_username()
 
-    expect(page).to_have_url(HOME_URL)
+    def test_description_visible(self):
+        self.home_page.verify_description()
 
-    home = HomePage(page)
-    home.check_welcome_description()
-
+    def test_home_logo_visible(self):
+        self.home_page.verify_logo()

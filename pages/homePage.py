@@ -1,3 +1,4 @@
+
 from playwright.sync_api import Page, expect
 
 
@@ -5,34 +6,40 @@ class HomePage:
     def __init__(self, page: Page):
         self.page = page
 
-        # Home page locators
+        # Home screen container
+        self.home_page = page.locator(".home-page")
+
+        # Welcome heading
         self.welcome_heading = page.get_by_role(
-            "heading", name="Welcome", exact=True
+            "heading", name="Welcome", level=1
         )
 
-        self.user_name = page.get_by_role(
-            "heading",
-            name="Oshadha Weerakon",
-            level=2,
-            exact=True
-        )
+        # Username
+        self.username = page.locator(".home-content h2")
 
-        self.welcome_description = page.get_by_text(
-            "A complete solution to support secure, efficient, "
-            "and streamlined customer onboarding",
-            exact=True
-        )
+        # Description
+        self.description = page.locator(".home-content p")
 
-    def check_welcome_heading(self):
+        # Home logo
+        self.logo = page.locator("img.home-logo")
+
+    def verify_welcome_heading(self):
         expect(self.welcome_heading).to_be_visible()
+        expect(self.welcome_heading).to_have_text("Welcome")
 
-    def check_user_name(self):
-        expect(self.user_name).to_be_visible()
+    def verify_username(self):
+        expect(self.username).to_be_visible()
+        expect(self.username).not_to_be_empty()
 
-    def check_welcome_description(self):
-        expect(self.welcome_description).to_be_visible()
+    def verify_description(self):
+        expect(self.description).to_be_visible()
+        expect(self.description).to_have_text(
+            "A complete solution to support secure, efficient, "
+            "and streamlined customer onboarding"
+        )
 
-    def check_home_page(self):
-        self.check_welcome_heading()
-        self.check_user_name()
-        self.check_welcome_description()
+    def verify_logo(self):
+        expect(self.logo).to_be_visible()
+        expect(self.logo).to_have_attribute(
+            "alt", "SENTINEL"
+        )
