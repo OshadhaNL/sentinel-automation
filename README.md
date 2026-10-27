@@ -5,7 +5,7 @@
 If you have not cloned the repository to your laptop yet:
 
 ```powershell
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/OshadhaNL/sentinel-automation.git
 cd sentinel-automation
 ```
 
