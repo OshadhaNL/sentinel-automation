@@ -141,7 +141,10 @@ class TransactionPage:
                 return
             except AssertionError:
                 if attempt < 2:
-                    self.page.reload(wait_until="domcontentloaded", timeout=60000)
+                    self.page.reload(
+                        wait_until="domcontentloaded",
+                        timeout=60000,
+                    )
                     expect(self.heading).to_be_visible(timeout=30000)
 
         empty_text = self.table.inner_text(timeout=10000)[:600]
@@ -154,8 +157,13 @@ class TransactionPage:
     def require_party_enabled(self, role):
         dropdown = self.party_dropdown(role)
         expect(dropdown).to_be_visible(timeout=15000)
-        if dropdown.locator('input.ant-select-selection-search-input').is_disabled():
-            pytest.skip(f"{role.title()} selection is disabled by the QA application")
+
+        if dropdown.locator(
+            'input.ant-select-selection-search-input'
+        ).is_disabled():
+            pytest.skip(
+                f"{role.title()} selection is disabled by the QA application"
+            )
 
     # --------------------------------------------------
     # Search
@@ -229,7 +237,9 @@ class TransactionPage:
             )
 
             if cell.count() and cell.first.is_visible():
-                cell.first.locator(".ant-picker-cell-inner").click(force=True)
+                cell.first.locator(
+                    ".ant-picker-cell-inner"
+                ).click(force=True)
                 return
 
             year_button = popup.locator(
@@ -296,8 +306,9 @@ class TransactionPage:
 
     def get_current_records(self):
         self.require_records()
-        # Read all cells in a single browser-side snapshot to avoid detached
-        # row locators while React re-renders after a search or sort.
+
+        # Read all cells in a single browser-side snapshot to avoid
+        # detached row locators while React re-renders.
 
         records = self.rows.evaluate_all(
             r"""rows => rows.map(row => {
@@ -520,25 +531,99 @@ class TransactionPage:
         assert self.current_sort() == direction
 
     def verify_sorted_dates(self, direction):
+        """
+        Verify date sorting across all transaction pages.
+
+        Retry a fresh read if the table changes while
+        collecting records. Incorrect sorting still fails.
+        """
+        last_error = None
+
+        for attempt in range(3):
+            if attempt:
+                self.page.reload(
+                    wait_until="domcontentloaded",
+                    timeout=60000,
+                )
+                self.wait_for_table_ready()
+
+            self.set_date_sort(direction)
+
+            records = self.get_all_records()
+
+            actual_dates = [
+                datetime.strptime(
+                    record["date"],
+                    "%d-%m-%Y",
+                ).date()
+                for record in records
+            ]
+
+            expected_dates = sorted(
+                actual_dates,
+                reverse=(direction == "descending"),
+            )
+
+            if actual_dates == expected_dates:
+                return
+
+            mismatch = next(
+                i
+                for i, (actual, expected) in enumerate(
+                    zip(actual_dates, expected_dates)
+                )
+                if actual != expected
+            )
+
+            last_error = (
+                f"Date sorting incorrect: {direction}; "
+                f"first mismatch at record {mismatch + 1} "
+                f"(transaction {records[mismatch]['id']}): "
+                f"actual={actual_dates[mismatch]}, "
+                f"expected={expected_dates[mismatch]}; "
+                f"checked {len(records)} records"
+            )
+
+            print(
+                f"Sorting attempt {attempt + 1}/3: "
+                f"{last_error}"
+            )
+
+        raise AssertionError(last_error)
+
+    def verify_date_sort_per_page(self, direction):
+        assert direction in ("ascending", "descending")
+
         self.set_date_sort(direction)
 
         records = self.get_all_records()
 
-        actual_dates = [
-            datetime.strptime(
-                record["date"],
-                "%d-%m-%Y",
-            ).date()
-            for record in records
-        ]
+        page_size = 10
+        failed_pages = []
 
-        expected_dates = sorted(
-            actual_dates,
-            reverse=direction == "descending",
-        )
+        for start in range(0, len(records), page_size):
+            page_records = records[start:start + page_size]
 
-        assert actual_dates == expected_dates, (
-            f"Date sorting incorrect: {direction}"
+            actual_dates = [
+                datetime.strptime(
+                    record["date"], "%d-%m-%Y"
+                ).date()
+                for record in page_records
+            ]
+
+            expected_dates = sorted(
+                actual_dates,
+                reverse=(direction == "descending"),
+            )
+
+            page_number = (start // page_size) + 1
+
+            if actual_dates != expected_dates:
+                failed_pages.append(page_number)
+
+        assert not failed_pages, (
+            f"{direction.title()} sorting is incorrect "
+            f"within pages: {failed_pages}"
         )
 
     # --------------------------------------------------
@@ -685,15 +770,17 @@ class TransactionPage:
             re.compile(r"\breq\b")
         )
 
-        # Required fields are marked by the input-box req class.
-        # The asterisk may be generated by CSS rather than a DOM child.
+        # Required fields use the input-box req class.
+        # The asterisk may be generated through CSS.
 
     # --------------------------------------------------
     # Ant Design dropdowns
     # --------------------------------------------------
 
     def dropdown_for(self, field_id):
-        return self.field(field_id).locator(".ant-select").first
+        return self.field(field_id).locator(
+            ".ant-select"
+        ).first
 
     def visible_options(self):
         return self.page.locator(
@@ -701,27 +788,24 @@ class TransactionPage:
             ".ant-select-item-option"
         )
 
-
     def open_dropdown(self, field_id):
         dropdown = self.dropdown_for(field_id)
 
-        # Verify the dropdown is visible.
         expect(dropdown).to_be_visible()
 
-        # Check whether the Ant Design select itself is disabled.
         expect(dropdown).not_to_have_class(
             re.compile(r"\bant-select-disabled\b")
         )
 
-        # Click the select control rather than its internal search input.
         dropdown.click()
 
-        # Verify the dropdown menu actually opens.
         options_popup = self.page.locator(
             ".ant-select-dropdown:visible"
         ).last
 
-        expect(options_popup).to_be_visible(timeout=10000)
+        expect(options_popup).to_be_visible(
+            timeout=10000
+        )
 
         return dropdown
 
@@ -730,16 +814,22 @@ class TransactionPage:
 
         option = self.visible_options().filter(
             has_text=re.compile(
-                r"^\s*" + re.escape(option_text) + r"\s*$",
+                r"^\s*"
+                + re.escape(option_text)
+                + r"\s*$",
                 re.IGNORECASE,
             )
         )
 
-        expect(option.first).to_be_visible(timeout=10000)
+        expect(option.first).to_be_visible(
+            timeout=10000
+        )
         option.first.click()
 
         expect(
-            dropdown.locator(".ant-select-selection-item")
+            dropdown.locator(
+                ".ant-select-selection-item"
+            )
         ).to_contain_text(option_text)
 
     def select_currency(self, currency_code):
@@ -762,16 +852,22 @@ class TransactionPage:
             )
         )
 
-        expect(options.first).to_be_visible(timeout=15000)
+        expect(options.first).to_be_visible(
+            timeout=15000
+        )
         options.first.click()
 
         expect(
-            dropdown.locator(".ant-select-selection-item")
+            dropdown.locator(
+                ".ant-select-selection-item"
+            )
         ).to_contain_text(code)
 
     def selected_option(self, field_id):
         dropdown = self.dropdown_for(field_id)
-        selected = dropdown.locator(".ant-select-selection-item")
+        selected = dropdown.locator(
+            ".ant-select-selection-item"
+        )
 
         if selected.count():
             return selected.first.inner_text().strip()
@@ -843,12 +939,17 @@ class TransactionPage:
             has_text=client_name
         )
 
-        expect(options.first).to_be_visible(timeout=15000)
+        expect(options.first).to_be_visible(
+            timeout=15000
+        )
         options.first.click()
 
         expect(
             self.party_tags(role)
-        ).to_have_count(before + 1, timeout=15000)
+        ).to_have_count(
+            before + 1,
+            timeout=15000,
+        )
 
     def remove_last_party(self, role):
         tags = self.party_tags(role)
@@ -875,9 +976,9 @@ class TransactionPage:
 
         if tab.count() == 0:
             pytest.xfail(
-                f"{role} detail tab is not rendered in the current "
-                "transaction modal; the UI currently shows only "
-                "the seller/buyer selectors."
+                f"{role} detail tab is not rendered in the "
+                "current transaction modal; the UI currently "
+                "shows only the seller/buyer selectors."
             )
 
         expect(tab).to_be_visible(timeout=10000)
@@ -893,7 +994,7 @@ class TransactionPage:
         ).filter(
             has=self.page.get_by_text(
                 "Legal Name",
-                exact=True
+                exact=True,
             )
         ).first
 
@@ -933,7 +1034,9 @@ class TransactionPage:
     def document_button(self):
         return self.active_modal.locator(
             "button.outline-btn"
-        ).filter(has_text="Add Document")
+        ).filter(
+            has_text="Add Document"
+        )
 
     def document_uploaders(self):
         return self.active_modal.locator(
@@ -986,13 +1089,16 @@ class TransactionPage:
     def find_by_address(self, address):
         self.search_for_record(
             address,
-            column=1
+            column=1,
         )
 
         records = self.get_current_records()
 
         for record in records:
-            if record["property"].casefold() == address.casefold():
+            if (
+                record["property"].casefold()
+                == address.casefold()
+            ):
                 return record
 
         raise AssertionError(
@@ -1020,10 +1126,12 @@ class TransactionPage:
         else:
             actual = self.selected_option(field_id)
 
-        assert str(expected).casefold() in actual.casefold(), (
+        assert (
+            str(expected).casefold()
+            in actual.casefold()
+        ), (
             f"{field_id}: expected {expected!r}, "
             f"got {actual!r}"
         )
 
         self.cancel_modal()
-

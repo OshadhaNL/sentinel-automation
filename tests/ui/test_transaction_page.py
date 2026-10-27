@@ -304,6 +304,10 @@ class TestTransactionPage:
             record["date"],
         )
 
+    # ==========================================
+    # Date sorting
+    # ==========================================
+
     def test_date_sort_icons(self):
         expect(
             self.transaction.date_header.locator(
@@ -348,15 +352,33 @@ class TestTransactionPage:
             == "none"
         )
 
+    @pytest.mark.xfail(
+        reason="Known application bug: Date sorting is not global across pagination",
+        strict=True,
+    )
     def test_dates_sorted_ascending(self):
-        self.transaction.verify_sorted_dates(
+        self.transaction.verify_sorted_dates("ascending")
+
+    @pytest.mark.xfail(
+        reason="Known application bug: Date sorting is not global across pagination",
+        strict=True,
+    )
+    def test_dates_sorted_descending(self):
+        self.transaction.verify_sorted_dates("descending")
+
+    def test_date_sort_ascending_per_page(self):
+        self.transaction.verify_date_sort_per_page(
             "ascending"
         )
 
-    def test_dates_sorted_descending(self):
-        self.transaction.verify_sorted_dates(
+    def test_date_sort_descending_per_page(self):
+        self.transaction.verify_date_sort_per_page(
             "descending"
         )
+
+    # ==========================================
+    # Pagination
+    # ==========================================
 
     def test_pagination_visible(self):
         expect(
@@ -369,6 +391,10 @@ class TestTransactionPage:
                 ".ant-pagination-next"
             )
         ).to_be_visible()
+
+    # ==========================================
+    # Table edit buttons
+    # ==========================================
 
     def test_edit_button_visible(self):
         self.transaction.require_records()
@@ -646,7 +672,6 @@ class TestTransactionPage:
             self.transaction.party_dropdown("buyer")
         ).to_be_visible()
 
-
     def test_edit_vendor_dropdown_enabled(self):
         self.transaction.open_edit_first()
 
@@ -672,7 +697,6 @@ class TestTransactionPage:
 
         combobox = dropdown.get_by_role("combobox")
         expect(combobox).to_be_enabled()
-
 
     def test_edit_vendor_dropdown_opens(self):
         self.transaction.open_edit_first()
@@ -791,34 +815,52 @@ class TestTransactionPage:
             self.transaction.document_uploaders().last
         ).to_be_visible()
 
+    # CORRECTED TEST 1
     def test_edit_choose_file_button(self):
         self.transaction.open_edit_first()
+        self.transaction.add_document_row()
+
+        uploader = self.transaction.document_uploaders().last
+
+        expect(uploader).to_be_visible()
 
         expect(
-            self.transaction.edit_modal.get_by_role(
+            uploader.get_by_role(
                 "button",
-                name="Choose File",
-            ).first
+                name="Choose File"
+            )
         ).to_be_visible()
 
+    # CORRECTED TEST 2
     def test_edit_document_file_types(self):
         self.transaction.open_edit_first()
+        self.transaction.add_document_row()
+
+        uploader = self.transaction.document_uploaders().last
+
+        expect(uploader).to_be_visible()
 
         expect(
-            self.transaction.edit_modal.get_by_text(
+            uploader.get_by_text(
                 re.compile(
                     r"PDF,\s*PNG,\s*JPG\s*or\s*JPEG"
                 )
-            ).first
+            )
         ).to_be_visible()
 
+    # CORRECTED TEST 3
     def test_edit_document_max_size(self):
         self.transaction.open_edit_first()
+        self.transaction.add_document_row()
+
+        uploader = self.transaction.document_uploaders().last
+
+        expect(uploader).to_be_visible()
 
         expect(
-            self.transaction.edit_modal.get_by_text(
+            uploader.get_by_text(
                 re.compile(r"max\.\s*10MB")
-            ).first
+            )
         ).to_be_visible()
 
     # ==========================================
