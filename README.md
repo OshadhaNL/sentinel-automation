@@ -28,7 +28,7 @@ git --version
 ### Step 2 — Clone the Project from GitHub
 
 ```powershell
-git clone <YOUR_REPOSITORY_URL>
+git clone https://github.com/OshadhaNL/sentinel-automation.git
 cd sentinel-automation
 ```
 
