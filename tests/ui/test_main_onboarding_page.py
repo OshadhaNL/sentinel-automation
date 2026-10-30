@@ -241,6 +241,11 @@ class TestMainOnboarding:
         onboarding.consent_checkbox().check()
         onboarding.consent_agree().click()
         expect(onboarding.page).to_have_url(re.compile(r'.*/nolimit/app/onboarding/individual/process\?client=[^&]+&step=verification(?:&.*)?$'))
+        print("\n========== INDIVIDUAL ONBOARDING URL ==========")
+        print(onboarding.page.url)
+
+        print("\n========== INDIVIDUAL ONBOARDING ARIA SNAPSHOT ==========")
+        print(onboarding.page.locator("body").aria_snapshot())
 
     def test_existing_individual_popup_and_okay(self, onboarding):
         onboarding.choose_client('individual', os.getenv('EXISTING_INDIVIDUAL_NAME', 'oshadha'))
