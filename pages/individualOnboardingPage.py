@@ -3,6 +3,8 @@ import re
 from playwright.sync_api import Page, expect
 from pathlib import Path
 from playwright.sync_api import TimeoutError
+from urllib.parse import urlparse, parse_qs
+
 
 class IndividualOnboardingPage:
 
@@ -2763,4 +2765,1489 @@ class IndividualOnboardingPage:
 
         expect(save_button).to_be_visible()
         expect(save_button).to_be_enabled()
+
+
+    # =========================================================
+    # KYC FORM - SECTION 01 FUNCTIONAL ACTIONS
+    # Add inside the existing IndividualOnboardingPage class.
+    # Do not replace your working open_kyc_form() method.
+    # =========================================================
+
+    KYC_WEALTH_OPTIONS = (
+        "Employment Income / Salary", "Savings", "Mortgage / Loan",
+        "Sale of Property", "Business Income", "Investment Income",
+        "Sale of Investments / Shares", "Inheritance", "Gift",
+        "Superannuation / Pension", "Trust Distribution", "Insurance Payout",
+        "Legal Settlement / Compensation", "Cryptocurrency Assets",
+        "Overseas Funds", "Other",
+    )
+
+    KYC_TEXT_PLACEHOLDERS = {
+        "full_name": "Enter full name",
+        "contact": "Enter contact number",
+        "email": "Enter email address",
+        "document_number": "Document Number",
+        "passport_number": "Enter passport number",
+    }
+
+    @property
+    def kyc_form(self):
+        return self.page.locator(".kyc-form")
+
+    def kyc_assert_loaded(self):
+        expect(self.kyc_form).to_be_visible(timeout=30000)
+        expect(self.kyc_form.locator("h4.secondary-title").filter(
+            has_text="KNOW YOUR CUSTOMER (KYC) FORM - INDIVIDUAL"
+        )).to_be_visible()
+
+    def kyc_text_input(self, field):
+        return self.kyc_form.get_by_placeholder(self.KYC_TEXT_PLACEHOLDERS[field], exact=True).first
+
+    def kyc_fill_text(self, field, value):
+        target = self.kyc_text_input(field)
+        expect(target).to_be_visible()
+        expect(target).to_be_enabled()
+        target.fill(value)
+        expect(target).to_have_value(value)
+
+    def kyc_clear_text(self, field):
+        target = self.kyc_text_input(field)
+        target.clear()
+        expect(target).to_have_value("")
+
+    def kyc_address(self, index):
+        assert index in (0, 1)
+        return self.kyc_form.get_by_placeholder("Enter the address here...", exact=True).nth(index)
+
+    def kyc_fill_address(self, index, value):
+        target = self.kyc_address(index)
+        target.fill(value)
+        expect(target).to_have_value(value)
+
+    def kyc_select_for_label(self, label, scope=None):
+        """Find an Ant Design select next to the exact field label."""
+        container = scope if scope is not None else self.kyc_form
+        label_node = container.locator("label").filter(
+            has_text=re.compile(r"^\s*" + re.escape(label) + r"\s*$")
+        ).first
+        expect(label_node).to_be_visible()
+        selection = label_node.locator(
+            "xpath=following-sibling::div[contains(concat(' ',normalize-space(@class),' '),' ant-select ')]"
+        )
+        expect(selection).to_be_visible()
+        return selection
+
+    def kyc_dropdown_options(self, label, scope=None, search=None):
+        """Open an Ant Design select and wait for its actual options."""
+        selector = self.kyc_select_for_label(label, scope)
+        expect(selector).to_be_visible()
+        selector.click()
+
+        if search:
+            search_input = selector.locator("input.ant-select-selection-search-input")
+            expect(search_input).to_be_visible()
+            search_input.fill(search)
+
+        options = self.page.locator(
+            ".ant-select-dropdown:visible "
+            ".ant-select-item-option:not(.ant-select-item-option-disabled)"
+        )
+
+        if search:
+            # An earlier Ant dropdown can briefly remain visible during animation.
+            # Wait for the option that matches THIS field's search instead of
+            # accidentally selecting an old option (e.g., Male).
+            matched = options.filter(
+                has_text=re.compile(re.escape(search), re.IGNORECASE)
+            )
+            expect(matched.first).to_be_visible(timeout=15000)
+        else:
+            expect(options.first).to_be_visible(timeout=15000)
+
+        return selector, options
+
+    def kyc_choose_first_dropdown_option(self, label, scope=None, search=None):
+
+        selector = self.kyc_select_for_label(label, scope)
+
+        expect(selector).to_be_visible(timeout=15000)
+        selector.click()
+
+        search_input = selector.locator(
+            "input.ant-select-selection-search-input"
+        )
+
+        expect(search_input).to_be_attached(timeout=15000)
+
+        # Find the dropdown associated with THIS select,
+        # rather than an old dropdown still closing.
+        dropdown_id = search_input.get_attribute("aria-controls")
+
+        dropdown = None
+
+        if dropdown_id:
+            controlled_list = self.page.locator(
+                f'[id="{dropdown_id}"]'
+            )
+
+            if controlled_list.count() > 0:
+                dropdown = controlled_list.locator(
+                    "xpath=ancestor::div[contains("
+                    "concat(' ', normalize-space(@class), ' '), "
+                    "' ant-select-dropdown ')]"
+                ).first
+
+        if dropdown is None or dropdown.count() == 0:
+            dropdown = self.page.locator(
+                ".ant-select-dropdown:visible"
+            ).last
+
+        options = dropdown.locator(
+            ".ant-select-item-option"
+            ":not(.ant-select-item-option-disabled)"
+        )
+
+        if search:
+            search_input.fill(search)
+
+            option = options.filter(
+                has_text=re.compile(
+                    re.escape(search),
+                    re.IGNORECASE
+                )
+            ).first
+
+            expect(option).to_be_visible(timeout=15000)
+
+            expected_text = option.inner_text().strip()
+
+            # Searchable Ant Design selects support Enter.
+            search_input.press("Enter")
+
+        else:
+            option = options.first
+
+            expect(option).to_be_visible(timeout=15000)
+
+            expected_text = option.inner_text().strip()
+
+            # The first option is already active when the dropdown opens.
+            # Do not press ArrowDown because that selects the second option.
+            search_input.press("Enter")
+
+            print(f"Selected using keyboard: {expected_text}")
+
+        selected_item = selector.locator(
+            ".ant-select-selection-item"
+        )
+
+        expect(selected_item).to_have_text(
+            expected_text,
+            timeout=15000
+        )
+
+        print(f"{label} selected: {expected_text}")
+
+        return expected_text
+
+
+    @property
+    def kyc_nationality_box(self):
+        return self.kyc_form.locator(".border-box").filter(
+            has=self.page.locator(".border-box-label").filter(
+                has_text=re.compile(r"^Nationality$")
+            )
+        )
+
+    def kyc_nationality_radio(self, kind):
+        values = {"Single": "1", "Dual": "2", "Multiple": "3"}
+        return self.kyc_nationality_box.locator(
+            f'input[type="radio"][value="{values[kind]}"]'
+        )
+
+    def kyc_choose_nationality_type(self, kind):
+        radio = self.kyc_nationality_radio(kind)
+        radio.check()
+        expect(radio).to_be_checked()
+        for other in ("Single", "Dual", "Multiple"):
+            if other != kind:
+                expect(self.kyc_nationality_radio(other)).not_to_be_checked()
+
+    def kyc_nationality_selects(self):
+        return self.kyc_nationality_box.locator(".ant-select")
+
+    def kyc_passport_inputs(self):
+        return self.kyc_form.get_by_placeholder("Enter passport number", exact=True)
+
+    def kyc_date_input(self, index):
+        assert index in (0, 1, 2), "Date indices: 0 DOB, 1 passport issue, 2 passport expiry"
+        return self.kyc_form.locator('.ant-picker input[placeholder="Select date"]').nth(index)
+
+    def kyc_open_date_picker(self, index):
+        target = self.kyc_date_input(index)
+        expect(target).to_be_visible()
+        target.click()
+        popup = self.page.locator(
+            ".ant-picker-dropdown:not(.ant-picker-dropdown-hidden):visible"
+        )
+        expect(popup).to_be_visible(timeout=15000)
+        return popup
+
+    def kyc_select_calendar_day(self, index):
+        popup = self.kyc_open_date_picker(index)
+        days = popup.locator(
+            ".ant-picker-cell-in-view:not(.ant-picker-cell-disabled) .ant-picker-cell-inner"
+        )
+        expect(days.first).to_be_visible()
+        days.first.click()
+        expect(self.kyc_date_input(index)).not_to_have_value("")
+        return self.kyc_date_input(index).input_value()
+
+    def kyc_wealth_input(self, name):
+        assert name in self.KYC_WEALTH_OPTIONS
+        section = self.kyc_form.locator(".header-box").filter(has_text="Source of Wealth")
+        return section.locator(f'input[type="checkbox"][value="{name}"]')
+
+    def kyc_set_wealth(self, name, checked=True):
+        """Use the real checkbox state; report if the application refuses it."""
+        target = self.kyc_wealth_input(name)
+        expect(target).to_be_visible()
+        expect(target).to_be_enabled()
+        if checked:
+            if not target.is_checked():
+                target.click()
+            expect(target).to_be_checked(timeout=5000)
+        else:
+            if target.is_checked():
+                target.click()
+            expect(target).not_to_be_checked(timeout=5000)
+
+    def kyc_set_wealth(self, name, checked=True):
+        """Use the real checkbox state; report if the application refuses it."""
+        target = self.kyc_wealth_input(name)
+        expect(target).to_be_visible()
+        expect(target).to_be_enabled()
+        if checked:
+            if not target.is_checked():
+                target.click()
+            expect(target).to_be_checked(timeout=5000)
+        else:
+            if target.is_checked():
+                target.click()
+            expect(target).not_to_be_checked(timeout=5000)
+
+    def kyc_wealth_checked_values(self):
+        section = self.kyc_form.locator(".header-box").filter(has_text="Source of Wealth")
+        return section.locator('input[type="checkbox"]:checked').evaluate_all(
+            "els => els.map(el => el.value)"
+        )
+
+    def kyc_save_button(self):
+        return self.kyc_form.get_by_role("button", name="Save", exact=True)
+
+    def kyc_click_save(self):
+        button = self.kyc_save_button()
+        expect(button).to_be_visible()
+        expect(button).to_be_enabled()
+        button.click()
+
+    def kyc_fill_passport_number(self, index, value):
+        """Type into dynamic nationality/passport inputs without a long fill retry."""
+        inputs = self.kyc_passport_inputs()
+        assert inputs.count() > index, f"Passport input {index + 1} not found"
+        target = inputs.nth(index)
+        expect(target).to_be_visible(timeout=15000)
+        expect(target).to_be_enabled()
+        target.click()
+        target.press("ControlOrMeta+A")
+        target.press_sequentially(value, delay=30)
+        expect(inputs.nth(index)).to_have_value(value, timeout=15000)
+
+    # ============================================================
+    # RISK ASSESSMENT
+    # ============================================================
+
+    RISK_OPTIONS = {
+        "Country / Jurisdiction Risk": {
+            "low": 1,
+            "other": 3,
+            "high": 5,
+        },
+        "Politically Exposed Person (PEP) Status": {
+            "nonPep": 1,
+            "associate": 3,
+            "pep": 5,
+        },
+        "Australian Residential Status": {
+            "residence": 1,
+            "nonResidence": 3,
+        },
+        "Transfer of Funds": {
+            "bankTransfer": 1,
+            "cash": 3,
+        },
+        "Adverse Media": {
+            "noHits": 1,
+            "confirmed": 3,
+        },
+    }
+
+    def open_risk_assessment(self):
+
+        # Step 1: Handle the Verification submission success modal.
+        success_modal = self.page.locator(
+            ".modal-z.modal-z-open"
+        ).filter(
+            has_text="Submission Successful"
+        )
+
+        if success_modal.count() > 0:
+            expect(success_modal).to_be_visible(timeout=15000)
+
+            print("Submission success modal detected.")
+
+            # Reuse the existing working method from KYC setup.
+            self.click_finish_and_view_submitted_documents()
+
+            expect(success_modal).to_be_hidden(timeout=15000)
+
+            print("Submission success modal closed.")
+
+        # Step 2: Locate the Risk Assessment tab.
+        risk_tab = self.page.locator(
+            ".tab-z-option"
+        ).filter(
+            has=self.page.get_by_text(
+                "Risk Assessment",
+                exact=True
+            )
+        )
+
+        expect(risk_tab).to_be_visible(timeout=15000)
+
+        # Step 3: Click Risk Assessment.
+        risk_tab.click()
+
+        # Step 4: Verify the Risk Assessment tab is active.
+        expect(risk_tab).to_have_class(
+            re.compile(r"\bactive\b"),
+            timeout=15000
+        )
+
+        # Step 5: Verify the Risk Assessment content loaded.
+        expect(
+            self.page.get_by_text(
+                "Risk Assessment Summary",
+                exact=True
+            )
+        ).to_be_visible(timeout=15000)
+
+        print("Risk Assessment opened successfully.")
+
+    def risk_group(self, group_name):
+        group = self.page.locator(".border-box").filter(
+            has=self.page.locator(".border-box-label").filter(
+                has_text=re.compile(
+                    rf"^\s*{re.escape(group_name)}\s*$"
+                )
+            )
+        )
+
+        expect(group).to_have_count(1)
+        return group
+
+    def risk_radio(self, group_name, value):
+        return self.risk_group(group_name).locator(
+            f'input.ant-radio-input[value="{value}"]'
+        )
+
+    def risk_select_multiple(self, selections):
+
+        print("\n========== SELECTING RISK FACTORS ==========")
+
+        # Validate the requested selections.
+        for group_name, value in selections.items():
+            assert group_name in self.RISK_OPTIONS, (
+                f"Unknown risk factor: {group_name}"
+            )
+
+            assert value in self.RISK_OPTIONS[group_name], (
+                f"Invalid option '{value}' for {group_name}"
+            )
+
+        max_attempts = 5
+
+        for attempt in range(1, max_attempts + 1):
+
+            print(f"\nVerification attempt {attempt}/{max_attempts}")
+
+            # Select only options that are not currently selected.
+            for group_name, expected_value in selections.items():
+
+                actual_values = self.risk_selected_values(group_name)
+
+                if actual_values != [expected_value]:
+                    print(
+                        f"Updating {group_name}: "
+                        f"{actual_values} -> {expected_value}"
+                    )
+
+                    self.risk_select(group_name, expected_value)
+
+            # Allow asynchronous frontend updates to settle.
+            self.page.wait_for_timeout(700)
+
+            mismatches = {}
+
+            for group_name, expected_value in selections.items():
+
+                actual_values = self.risk_selected_values(group_name)
+
+                print(
+                    f"{group_name}: "
+                    f"Expected={expected_value}, "
+                    f"Actual={actual_values}"
+                )
+
+                if actual_values != [expected_value]:
+                    mismatches[group_name] = actual_values
+
+            if mismatches:
+                print(f"Selections reverted: {mismatches}")
+                continue
+
+            # Confirm selections remain stable after another interval.
+            self.page.wait_for_timeout(700)
+
+            stable = all(
+                self.risk_selected_values(group_name) == [expected_value]
+                for group_name, expected_value in selections.items()
+            )
+
+            if stable:
+
+                print("\nAll requested risk selections are stable.")
+
+                # Verify the application's displayed calculation.
+                self.risk_verify_calculation()
+
+                # For a complete five-factor scenario, verify the
+                # score against the intended selections too.
+                if len(selections) == len(self.RISK_OPTIONS):
+                    expected_score = sum(
+                        self.RISK_OPTIONS[group_name][value]
+                        for group_name, value in selections.items()
+                    )
+
+                    actual_score = self.risk_total_score()
+
+                    assert actual_score == expected_score, (
+                        f"Risk score mismatch: "
+                        f"Expected {expected_score}, "
+                        f"Actual {actual_score}"
+                    )
+
+                return
+
+            print("Selections changed during stability verification.")
+
+        final_values = {
+            group_name: self.risk_selected_values(group_name)
+            for group_name in selections
+        }
+
+        raise AssertionError(
+            f"Risk selections did not remain stable after "
+            f"{max_attempts} attempts. "
+            f"Expected: {selections}. "
+            f"Actual: {final_values}"
+        )
+
+    def risk_select(self, group_name, value):
+        assert group_name in self.RISK_OPTIONS
+        assert value in self.RISK_OPTIONS[group_name]
+
+        radio = self.risk_radio(group_name, value)
+
+        expect(radio).to_have_count(1)
+
+        # Select the radio through Playwright's radio-specific action.
+        radio.check(timeout=15000)
+
+        expect(radio).to_be_checked(timeout=15000)
+
+        print(f"Risk selected: {group_name} = {value}")
+
+
+    def risk_selected_values(self, group_name):
+        group = self.risk_group(group_name)
+
+        return group.locator(
+            "input.ant-radio-input:checked"
+        ).evaluate_all(
+            "(elements) => elements.map(el => el.value)"
+        )
+
+    def risk_summary_table(self):
+        return self.page.locator(
+            "table.signature-table"
+        ).first
+
+    def risk_total_score(self):
+        total_row = self.risk_summary_table().locator(
+            "tbody tr"
+        ).filter(
+            has=self.page.get_by_text(
+                "Total Score",
+                exact=True
+            )
+        )
+
+        expect(total_row).to_have_count(1)
+
+        score_cell = total_row.locator("td").last
+
+        expect(score_cell).to_contain_text(
+            re.compile(r"\d+")
+        )
+
+        return int(score_cell.inner_text().strip())
+
+    def risk_classification(self):
+        classification = self.page.get_by_text(
+            re.compile(
+                r"^Risk Classification:\s*(Low|Medium|High)$"
+            )
+        )
+
+        expect(classification).to_be_visible(timeout=15000)
+
+        text = classification.inner_text().strip()
+
+        return text.split(":", 1)[1].strip()
+
+    def risk_expected_score(self):
+        total = 0
+
+        for group_name, options in self.RISK_OPTIONS.items():
+            selected = self.risk_selected_values(group_name)
+
+            assert len(selected) <= 1, (
+                f"Multiple radio selections in {group_name}: "
+                f"{selected}"
+            )
+
+            if selected:
+                total += options[selected[0]]
+
+        return total
+
+    def risk_expected_classification(self, score):
+        if score <= 5:
+            return "Low"
+
+        if score <= 15:
+            return "Medium"
+
+        return "High"
+
+    def risk_verify_calculation(self):
+        expected_score = self.risk_expected_score()
+        actual_score = self.risk_total_score()
+
+        assert actual_score == expected_score, (
+            f"Risk score mismatch: "
+            f"expected {expected_score}, "
+            f"actual {actual_score}"
+        )
+
+        expected_rating = self.risk_expected_classification(
+            expected_score
+        )
+
+        actual_rating = self.risk_classification()
+
+        assert actual_rating == expected_rating, (
+            f"Risk classification mismatch: "
+            f"expected {expected_rating}, "
+            f"actual {actual_rating}"
+        )
+
+        print(
+            f"Risk calculation verified: "
+            f"Score={actual_score}, "
+            f"Classification={actual_rating}"
+        )
+
+    def risk_complete_button(self):
+        return self.page.get_by_role(
+            "button",
+            name="Complete Onboarding",
+            exact=True
+        )
+
+    def risk_debug_all_selections(self):
+        print("\n========== RISK SELECTION DEBUG ==========")
+
+        total = 0
+
+        for group_name, options in self.RISK_OPTIONS.items():
+            selected = self.risk_selected_values(group_name)
+
+            if selected:
+                value = selected[0]
+                score = options[value]
+                total += score
+            else:
+                value = "NOT SELECTED"
+                score = 0
+
+            print(
+                f"{group_name}: "
+                f"Selected={value}, Score={score}"
+            )
+
+        print(f"Calculated score: {total}")
+        print(f"Displayed score: {self.risk_total_score()}")
+        print(f"Classification: {self.risk_classification()}")
+        print("==========================================\n")
+
+    def risk_update_changes_button(self):
+        return self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+    def risk_complete_onboarding(self):
+
+        complete_button = self.risk_complete_button()
+
+        expect(complete_button).to_be_visible(timeout=15000)
+        expect(complete_button).to_be_enabled()
+
+        complete_button.click()
+
+        print("Complete Onboarding button clicked.")
+
+    def risk_verify_onboarding_completed(self):
+
+        # The original completion button should disappear.
+        expect(
+            self.risk_complete_button()
+        ).to_have_count(0, timeout=15000)
+
+        # Update Changes should replace Complete Onboarding.
+        update_button = self.risk_update_changes_button()
+
+        expect(update_button).to_be_visible(timeout=15000)
+        expect(update_button).to_be_enabled()
+
+        print(
+            "Onboarding completion verified. "
+            "Update Changes button is visible."
+        )
+
+    def risk_click_update_changes(self):
+
+        update_button = self.risk_update_changes_button()
+
+        expect(update_button).to_be_visible(timeout=15000)
+        expect(update_button).to_be_enabled(timeout=15000)
+
+        update_button.click()
+
+        print("Update Changes button clicked.")
+
+    def risk_verify_update_success_notification(self):
+
+        notification = self.page.locator(
+            ".ant-notification-notice.ant-notification-notice-success"
+        ).filter(
+            has_text="Risk assessment updated successfully"
+        )
+
+        expect(notification).to_be_visible(timeout=15000)
+
+        print("Risk assessment update success notification verified.")
+
+    def risk_verify_selected_values(self, selections):
+
+        for group_name, expected_value in selections.items():
+            actual_values = self.risk_selected_values(group_name)
+
+            assert actual_values == [expected_value], (
+                f"{group_name}: "
+                f"Expected {expected_value}, "
+                f"got {actual_values}"
+            )
+
+        print("All updated risk selections verified.")
+
+    def risk_get_current_client_id(self):
+
+        # Capture the unique Client ID before leaving onboarding.
+        parsed_url = urlparse(self.page.url)
+
+        client_ids = parse_qs(parsed_url.query).get("client", [])
+
+        assert len(client_ids) == 1 and client_ids[0], (
+            f"Could not identify the current client from URL: "
+            f"{self.page.url}"
+        )
+
+        client_id = client_ids[0]
+
+        print(f"Current Client ID: {client_id}")
+
+        return client_id
+
+    def profiles_open_page(self):
+
+        self.page.get_by_role(
+            "link",
+            name="Profiles",
+            exact=False
+        ).click()
+
+        expect(self.page).to_have_url(
+            re.compile(r".*/nolimit/app/profiles/?$")
+        )
+
+        expect(
+            self.page.get_by_role(
+                "heading",
+                name="Profiles",
+                exact=True
+            )
+        ).to_be_visible(timeout=15000)
+
+        print("Profiles page opened successfully.")
+
+    def profiles_search_client(self, client_id):
+
+        search_input = self.page.get_by_placeholder(
+            "Search by client ID or name",
+            exact=True
+        )
+
+        expect(search_input).to_be_visible()
+
+        search_input.fill(client_id)
+
+        self.page.locator(
+            ".search-box-z .search-btn"
+        ).click()
+
+        row = self.page.locator(
+            "tr.ant-table-row"
+        ).filter(
+            has=self.page.locator(
+                f'a.table-link[href*="client={client_id}"]'
+            )
+        )
+
+        expect(row).to_have_count(1, timeout=15000)
+        expect(row).to_be_visible()
+
+        print(f"Client found in Profiles: {client_id}")
+
+        return row
+
+    def profiles_verify_client_risk(self, client_id, expected_risk):
+
+        row = self.profiles_search_client(client_id)
+
+        # Column 3: Type
+        expect(
+            row.locator("td").nth(2)
+        ).to_contain_text("individual")
+
+        # Column 4: Status
+        expect(
+            row.locator("td").nth(3)
+        ).to_contain_text("Onboarded")
+
+        # Column 6: Risk Rating
+        expect(
+            row.locator("td").nth(5)
+        ).to_contain_text(expected_risk)
+
+        print(
+            f"Profiles verified: Client={client_id}, "
+            f"Status=Onboarded, Risk={expected_risk}"
+        )
+
+    def profiles_open_individual(self, client_id):
+
+        row = self.page.locator(
+            "tr.ant-table-row"
+        ).filter(
+            has=self.page.locator(
+                f'a.table-link[href*="client={client_id}"]'
+            )
+        )
+
+        expect(row).to_have_count(1)
+
+        client_link = row.locator("a.table-link")
+
+        expect(client_link).to_be_visible()
+
+        client_link.click()
+
+        expect(self.page).to_have_url(
+            re.compile(
+                rf"/nolimit/app/profiles/individual/process"
+                rf"\?.*client={re.escape(client_id)}(?:&|$)"
+            ),
+            timeout=15000
+        )
+
+        print(f"Individual profile opened: {client_id}")
+
+    def profile_verify_verification_page(self, client_id):
+
+        expect(
+            self.page.get_by_role(
+                "heading",
+                name="Profile - Individual",
+                exact=True
+            )
+        ).to_be_visible(timeout=15000)
+
+        expect(
+            self.page.locator(
+                ".tab-z-option.active"
+            ).filter(
+                has_text="Verification"
+            )
+        ).to_be_visible()
+
+        expect(
+            self.page.locator(
+                ".breadcrumb-badge"
+            )
+        ).to_contain_text(client_id)
+
+        expect(
+            self.page.locator(
+                ".breadcrumb-text"
+            )
+        ).to_have_text("Processed Details")
+
+        print(
+            f"Profile Verification page loaded: {client_id}"
+        )
+
+    def profile_verification_field(self, field_name):
+
+        field = self.page.locator(
+            ".verification-report-item"
+        ).filter(
+            has=self.page.locator(
+                "span.label",
+                has_text=re.compile(
+                    rf"^\s*{re.escape(field_name)}\s*$"
+                )
+            )
+        )
+
+        expect(field).to_have_count(1, timeout=15000)
+
+        return field
+
+    def profile_verification_field_value(self, field_name):
+
+        field = self.profile_verification_field(field_name)
+
+        badge = field.locator("span.custom-badge")
+
+        expect(badge).to_be_visible()
+
+        return badge.inner_text().strip()
+
+    def profile_verify_processed_details(self):
+
+        required_fields = [
+            "Face Match",
+            "Issuing Country",
+            "Region",
+            "Type of Document",
+            "First Name",
+            "Last Name",
+            "Date of Birth",
+            "Driver Licence Number",
+            "Personal Number",
+            "Expiry Date",
+            "Gender",
+            "Nationality",
+            "Issue Date",
+            "Place of Birth",
+            "Address",
+            "Residential Address",
+            "Face Recognition Time",
+            "Text Extraction Time",
+        ]
+
+        # This field can legitimately be empty.
+        optional_empty_fields = {
+            "Place of Birth",
+        }
+
+        print("\n========== PROFILE VERIFICATION DETAILS ==========")
+
+        for field_name in required_fields:
+
+            field = self.profile_verification_field(field_name)
+
+            expect(field).to_be_visible()
+
+            value = self.profile_verification_field_value(
+                field_name
+            )
+
+            print(f"{field_name}: {value}")
+
+            if field_name not in optional_empty_fields:
+                assert value, (
+                    f"Verification field '{field_name}' "
+                    f"has no displayed value."
+                )
+
+        print("All expected processed detail fields verified.")
+
+    def profile_verify_document_images(self):
+
+        image_labels = [
+            "Live Photo",
+            "Document Front",
+            "Document Back",
+        ]
+
+        print("\n========== PROFILE DOCUMENT IMAGES ==========")
+
+        for label in image_labels:
+            image_label = self.page.locator(
+                ".document-img .custom-label"
+            ).filter(
+                has_text=re.compile(
+                    rf"^\s*{re.escape(label)}\s*$"
+                )
+            )
+
+            expect(image_label).to_have_count(1)
+
+            expect(image_label).to_be_visible()
+
+            image = image_label.locator(
+                "xpath=following-sibling::div[1]//img"
+            )
+
+            expect(image).to_have_count(1)
+
+            expect(image).to_be_visible(timeout=30000)
+
+            expect(image).to_have_attribute(
+                "src",
+                re.compile(r"^https?://"),
+                timeout=30000
+            )
+
+            # Wait for the browser to finish loading the image.
+            expect(image).to_have_js_property(
+                "complete",
+                True,
+                timeout=30000
+            )
+
+            assert image.evaluate(
+                "(img) => img.naturalWidth > 0 && img.naturalHeight > 0"
+            ), f"{label} image failed to load."
+
+            print(f"{label}: Image loaded successfully.")
+
+        print("All three verification images verified.")
+
+    def verification_capture_review_form_details(self, strict=True):
+        """
+        Capture extracted document details before Save & Confirm.
+        """
+
+        expect(
+            self.page.get_by_role(
+                "heading",
+                name="Review Extracted Information"
+            )
+        ).to_be_visible(timeout=15000)
+
+        fields = [
+            "First Name",
+            "Last Name",
+            "Date of Birth",
+            "Gender",
+            "Nationality",
+            "Issuing Country",
+            "Type of Document",
+            "Driver Licence Number",
+            "Personal Number",
+            "Issue Date",
+            "Expiry Date",
+            "Place of Birth",
+        ]
+
+        details = {}
+
+        for field_name in fields:
+
+            field = self.page.locator(
+                "div.col-span-1.md\\:col-span-4"
+            ).filter(
+                has=self.page.locator(
+                    "label",
+                    has_text=re.compile(
+                        rf"^\s*{re.escape(field_name)}\s*$"
+                    )
+                )
+            )
+
+            if strict:
+                expect(field).to_have_count(1)
+            else:
+                if field.count() == 0:
+                    print("Review field not found; skipping optional field.")
+                    continue
+            selected_option = field.locator(
+                ".ant-select-selection-item"
+            )
+
+            if selected_option.count() > 0:
+                value = selected_option.inner_text().strip()
+
+            else:
+                field_input = field.locator(
+                    "input:not(.ant-select-selection-search-input)"
+                )
+
+                if field_input.count() > 0:
+                    value = field_input.first.input_value().strip()
+                else:
+                    value = ""
+
+            details[field_name] = value
+
+        assert details["First Name"], "First Name was not extracted"
+        assert details["Last Name"], "Last Name was not extracted"
+
+        print(
+            f"Captured {len(details)} review form fields "
+            "before submission."
+        )
+
+        return details
+
+    def verification_compare_review_to_profile(
+            self,
+            original_details,
+            saved_details
+    ):
+        from datetime import datetime
+
+        def normalize(field_name, value):
+            value = (value or "").strip()
+
+            if value.lower() in ("", "not readable"):
+                return ""
+
+            # Normalize dates.
+            if field_name in (
+                    "Date of Birth",
+                    "Issue Date",
+                    "Expiry Date"
+            ):
+                for date_format in ("%Y-%m-%d", "%b %d, %Y"):
+                    try:
+                        return datetime.strptime(
+                            value, date_format
+                        ).strftime("%Y-%m-%d")
+                    except ValueError:
+                        pass
+
+            # Normalize country names and ISO country codes.
+            if field_name in ("Nationality", "Issuing Country"):
+
+                # Example: Sri Lanka (LKA) -> LKA
+                country_code = re.search(r"\(([A-Z]{3})\)", value)
+
+                if country_code:
+                    return country_code.group(1).casefold()
+
+                # Example: LKA -> lka
+                return value.casefold()
+
+            return " ".join(value.split()).casefold()
+
+        mismatches = {}
+        skipped = []
+        compared = []
+
+        for field_name, original_value in original_details.items():
+
+            assert field_name in saved_details, (
+                f"Field '{field_name}' missing from saved profile"
+            )
+
+            saved_value = saved_details[field_name]
+
+            original_normalized = normalize(
+                field_name, original_value
+            )
+
+            saved_normalized = normalize(
+                field_name, saved_value
+            )
+
+            if not original_normalized:
+                skipped.append(field_name)
+                print(f"SKIPPED: {field_name} (original value empty)")
+                continue
+
+            if original_normalized != saved_normalized:
+                mismatches[field_name] = {
+                    "original": original_value,
+                    "saved": saved_value,
+                }
+                print(f"MISMATCH: {field_name}")
+
+            else:
+                compared.append(field_name)
+                print(f"MATCH: {field_name}")
+
+        assert compared, "No populated original fields were compared"
+
+        assert not mismatches, (
+            "Verification details do not match after reopening: "
+            f"{mismatches}"
+        )
+
+        print(
+            f"Verification persistence PASSED: "
+            f"{len(compared)} fields matched, "
+            f"{len(skipped)} blank original fields skipped."
+        )
+
+    def verification_capture_processed_details(self):
+        """
+        Capture saved verification details from the
+        completed Individual Profile -> Verification page.
+        """
+
+        report = self.page.locator(".verification-report")
+        expect(report).to_be_visible(timeout=15000)
+
+        details = {}
+
+        items = report.locator(".verification-report-item")
+        expect(items.first).to_be_visible(timeout=15000)
+
+        for index in range(items.count()):
+            item = items.nth(index)
+
+            label = item.locator("span.label").inner_text().strip()
+            value = item.locator("span.custom-badge").inner_text().strip()
+
+            assert label, f"Missing field label at index {index}"
+
+            assert label not in details, (
+                f"Duplicate verification field: {label}"
+            )
+
+            details[label] = value
+
+        print(f"Captured {len(details)} saved verification fields.")
+
+        return details
+
+
+    # ============================================================
+    # DOCUMENTS GAP COVERAGE - DELETE, MODIFY, REUPLOAD, VALIDATION
+    # Added without changing existing methods or locators.
+    # ============================================================
+
+    def docs_gap_open(self, tab="Verify"):
+        """Open Documents and the requested Documents subtab."""
+        expect(self.documents_tab).to_be_visible(timeout=15000)
+        if not re.search(r"\bactive\b", self.documents_tab.get_attribute("class") or ""):
+            self.open_tab("Documents")
+        self.click_documents_subtab(tab)
+        self.verify_documents_subtab_active(tab)
+        self.verify_documents_reference_id()
+
+    def docs_gap_resolve_filename(self, file_name):
+        """Consent Letter is stored with the generated client ID in its filename."""
+        if file_name == "Consent Letter":
+            return f"consent-letter-{self.get_verify_reference_id()}.pdf"
+        return file_name
+
+    def docs_gap_item(self, file_name, group_name=None):
+        """Find a Verify document card using the app's existing .border-box/.w-85 markup."""
+        file_name = self.docs_gap_resolve_filename(file_name)
+        if group_name is None:
+            # Search all groups: the same front/back filenames can belong
+            # to Driver Licence or Proof of Age Card workflows.
+            matches = self.page.locator(".border-box .w-85").filter(
+                has=self.page.get_by_role("heading", name=file_name, exact=True)
+            )
+            expect(matches).to_have_count(1, timeout=15000)
+            expect(matches).to_be_visible()
+            return matches
+        return self.get_verify_document_card(group_name, file_name)
+
+    def docs_gap_action(self, item, action):
+        """Resolve an existing action button by its title, not by icon text."""
+        button = item.locator(f'button[title="{action}"]')
+        if button.count() == 0:
+            button = item.get_by_role("button", name=action, exact=True)
+        expect(button).to_have_count(1)
+        expect(button).to_be_visible()
+        expect(button).to_be_enabled()
+        return button
+
+    def docs_gap_modal(self, kind=None):
+        """Locate the visible dialog; deletion may use a Popconfirm."""
+        if kind == "delete":
+            candidates = self.page.locator(
+                ".ant-popconfirm:visible, .ant-popover:visible, "
+                ".ant-modal:visible, .modal-z:visible, [role='alertdialog']:visible"
+            )
+        else:
+            candidates = self.page.locator(
+                ".modal-z:visible, .ant-modal:visible, [role='dialog']:visible"
+            )
+        expect(candidates.last).to_be_visible(timeout=15000)
+        return candidates.last
+
+    def docs_gap_modify(self, file_name, group_name=None):
+        self.docs_gap_action(self.docs_gap_item(file_name, group_name), "Modify").click()
+        modal = self.docs_gap_modal()
+        expect(modal.get_by_role("button", name="Save", exact=True)).to_be_visible()
+        return modal
+
+    def docs_gap_delete_decision(self, file_name, group_name=None, confirm=False):
+        """Handle a native browser confirm OR a DOM confirmation.
+
+        Without a Playwright dialog listener, native JS confirm is auto-dismissed,
+        leaving no HTML popup to locate. Returns the confirmation message.
+        """
+        observed = []
+
+        def on_dialog(dialog):
+            observed.append(dialog.message)
+            if confirm:
+                dialog.accept()
+            else:
+                dialog.dismiss()
+
+        self.page.on("dialog", on_dialog)
+        try:
+            self.docs_gap_action(
+                self.docs_gap_item(file_name, group_name), "Delete"
+            ).click()
+        finally:
+            self.page.remove_listener("dialog", on_dialog)
+
+        if observed:
+            return observed[0]
+
+        # Fallback for HTML popconfirm implementations. Do not silently
+        # pass if neither a native dialog nor an HTML confirmation appears.
+        candidates = self.page.locator(
+            ".ant-popconfirm:visible, .ant-popover:visible, "
+            ".ant-modal:visible, .modal-z:visible, "
+            "[role='alertdialog']:visible"
+        )
+        if candidates.count() == 0:
+            raise AssertionError(
+                "Delete click opened no native browser dialog or supported "
+                "HTML confirmation. Inspect the delete interaction in DevTools."
+            )
+        modal = candidates.last
+        expect(modal).to_be_visible()
+        message = modal.inner_text().strip()
+        if confirm:
+            self.docs_gap_confirm_delete(modal)
+        else:
+            self.docs_gap_cancel(modal)
+        return message
+
+    def docs_gap_delete(self, file_name, group_name=None):
+        self.docs_gap_action(self.docs_gap_item(file_name, group_name), "Delete").click()
+        return self.docs_gap_modal(kind="delete")
+
+    def docs_gap_cancel(self, modal):
+        cancel = modal.get_by_role("button", name=re.compile(r"^cancel$|^no$", re.I))
+        expect(cancel.first).to_be_visible()
+        cancel.first.click()
+        expect(modal).to_be_hidden(timeout=15000)
+
+    def docs_gap_close_modal(self, modal):
+        close = modal.locator("button.modal-z-close, button.ant-modal-close")
+        if close.count() == 0:
+            close = modal.get_by_role("button", name=re.compile(r"^close$", re.I))
+        expect(close.first).to_be_visible()
+        close.first.click()
+        expect(modal).to_be_hidden(timeout=15000)
+
+    def docs_gap_modify_fields(self, modal):
+        """Controls observed in the actual Sentinel Modify dialog."""
+        for label in ("Document Name", "Uploaded Date", "Expiry Date"):
+            expect(modal.get_by_text(label, exact=False).first).to_be_visible()
+
+        name = modal.get_by_placeholder("Enter document name", exact=True)
+        expiry = modal.get_by_placeholder("Select expiry date", exact=True)
+        uploaded = modal.get_by_placeholder("Select uploaded date", exact=True)
+        expect(name).to_have_count(1)
+        expect(expiry).to_have_count(1)
+        expect(uploaded).to_have_count(1)
+        expect(name).to_be_visible()
+        expect(expiry).to_be_visible()
+        expect(uploaded).to_be_disabled()
+        return name, expiry
+
+    def docs_gap_verify_modify_fields(self, modal, expected_filename=None):
+        name, expiry = self.docs_gap_modify_fields(modal)
+        expect(modal.get_by_role("button", name="Save", exact=True)).to_be_visible()
+        expect(modal.get_by_role("button", name="Cancel", exact=True)).to_be_visible()
+        expect(name).to_be_editable()
+        expect(expiry).to_be_enabled()
+        if expected_filename:
+            assert name.input_value().strip(), "Document Name was blank in Modify dialog"
+        return name, expiry
+
+    def docs_gap_verify_required_name(self, modal):
+        expect(modal).to_be_visible()
+
+        modal_text = modal.inner_text()
+
+        assert re.search(
+            r"Document\s+Name\s*\*",
+            modal_text
+        ), (
+            "Document Name required marker (*) was not found. "
+            f"Modal text: {modal_text}"
+        )
+
+    def docs_gap_verify_uploaded_date_readonly(self, modal):
+        expect(modal.get_by_text("Uploaded Date", exact=False).first).to_be_visible()
+        uploaded = modal.get_by_placeholder("Select uploaded date", exact=True)
+        expect(uploaded).to_be_visible()
+        expect(uploaded).to_be_disabled()
+        assert uploaded.input_value().strip(), "Uploaded Date should be populated"
+
+    def docs_gap_set_name(self, modal, new_name):
+        name, _ = self.docs_gap_modify_fields(modal)
+        expect(name).to_be_editable()
+        name.fill(new_name)
+        expect(name).to_have_value(new_name)
+
+    def docs_gap_set_expiry(self, modal, value="2030-12-31"):
+        """Fill the date field if editable; report picker-only controls explicitly."""
+        _, expiry = self.docs_gap_modify_fields(modal)
+        expect(expiry).to_be_enabled()
+        expiry.click()
+        if expiry.is_editable():
+            expiry.fill(value)
+            expiry.press("Tab")
+            expect(expiry).not_to_have_value("")
+        else:
+            raise AssertionError(
+                "Expiry Date is picker-only. Supply the calendar HTML to implement "
+                "year/month/day selection without guessing."
+            )
+
+    def docs_gap_save(self, modal):
+        save = modal.get_by_role(
+            "button", name="Save", exact=True
+        )
+
+        expect(save).to_be_enabled()
+
+        save.click()
+
+        try:
+            expect(modal).to_be_hidden(timeout=10000)
+
+        except AssertionError:
+            print("\nDOCUMENT SAVE DIAGNOSTICS")
+            print("Modal still visible:", modal.is_visible())
+            print("Modal content:", modal.inner_text())
+
+            name = modal.get_by_placeholder(
+                "Enter document name"
+            )
+            expiry = modal.get_by_placeholder(
+                "Select expiry date"
+            )
+
+            print("Document name:", name.input_value())
+            print("Expiry date:", expiry.input_value())
+            print("Expiry invalid:", expiry.get_attribute("aria-invalid"))
+
+            raise
+
+    def docs_gap_confirm_delete(self, modal):
+        """Confirm deletion and wait for the confirmation to close."""
+        expect(modal.get_by_text(re.compile(r"delete|remove|sure", re.I)).first).to_be_visible()
+        confirm = modal.get_by_role(
+            "button", name=re.compile(r"^(ok|delete|confirm|yes)$", re.I)
+        )
+        expect(confirm.first).to_be_enabled()
+        confirm.first.click()
+        expect(modal).to_be_hidden(timeout=30000)
+
+    def docs_gap_verify_deleted(self, file_name, group_name=None):
+        """Verify the card disappears; checks the resolved filename and group."""
+        resolved = self.docs_gap_resolve_filename(file_name)
+        if group_name is None:
+            cards = self.page.locator(".border-box .w-85")
+        else:
+            cards = self.page.locator(".border-box").filter(
+                has=self.page.locator(".border-box-label", has_text=re.compile(
+                    rf"^\s*{re.escape(group_name)}\s*$"
+                ))
+            ).locator(".w-85")
+        expect(cards.filter(
+            has=self.page.get_by_role("heading", name=resolved, exact=True)
+        )).to_have_count(0, timeout=30000)
+
+    def docs_gap_reupload(self, file_name, file_path, group_name=None):
+        """Replace a document through its own reupload input."""
+        file_path = Path(file_path).resolve()
+        assert file_path.is_file(), f"Reupload file not found: {file_path}"
+        card = self.docs_gap_item(file_name, group_name)
+        file_input = card.locator(".upload-wrapper input[type='file']")
+        expect(file_input).to_have_count(1)
+        file_input.set_input_files(str(file_path))
+        # The application may asynchronously upload and rename the document.
+        expect(self.page.locator(".ant-message-notice-error:visible")).to_have_count(0)
+
+    def docs_gap_upload_tab_next(self):
+        """Assert an empty Upload tab does not advance to Verify."""
+        self.docs_gap_open("Upload")
+        before_url = self.page.url
+        next_button = self.page.get_by_role("button", name="Next", exact=True)
+        expect(next_button).to_be_visible()
+        if next_button.is_enabled():
+            next_button.click()
+        self.verify_documents_subtab_active("Upload")
+        assert self.page.url == before_url, (
+            "Documents advanced even though no documents were uploaded"
+        )
+
+    def docs_gap_verify_no_name(self):
+        client = self.page.locator("h4.secondary-title").filter(
+            has_text="Client Name:"
+        )
+        expect(client).to_be_visible()
+        expect(client.locator("span")).to_have_text("N/A")
 
