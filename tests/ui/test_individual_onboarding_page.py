@@ -1487,34 +1487,101 @@ class TestIndividualOnboarding:
         ("Driver Licence", "doc-front.jpg"),
         ("Driver Licence", "doc-back.jpg"),
     ])
-    def test_docs_gap_09_save_expiry_date(self, docs_gap_ready, group, filename):
-        modal = self.individual.docs_gap_modify(filename, group)
-        self.individual.docs_gap_set_expiry(modal, "2030-12-31")
+
+
+    def test_docs_gap_09_save_expiry_date(
+            self, docs_gap_ready, group, filename
+    ):
+        modal = self.individual.docs_gap_modify(
+            filename, group
+        )
+
+        # Enter expiry date
+        self.individual.docs_gap_set_expiry(
+            modal, "31-12-2030"
+        )
+
+        # Verify date before Save
         _, expiry = self.individual.docs_gap_modify_fields(modal)
-        assert expiry.input_value().strip(), "Expiry Date did not accept a value"
+
+        expect(expiry).to_have_value("31-12-2030")
+
+        print("\nEXPIRY DATE BEFORE SAVE")
+        print("Document:", filename)
+        print("Expiry Date:", expiry.input_value())
+
+        # Save document
         self.individual.docs_gap_save(modal)
 
-    # 10 - Save document name, reopen Modify, verify persistence.
+        # Reopen Modify and verify persistence
+        modal = self.individual.docs_gap_modify(
+            filename, group
+        )
+
+        _, saved_expiry = self.individual.docs_gap_modify_fields(
+            modal
+        )
+
+        expect(saved_expiry).to_have_value("31-12-2030")
+
+        print("Expiry Date persisted successfully")
+
+    # 10 - Save document name, reload, and verify persistence.
     @pytest.mark.parametrize("group,filename", [
         ("Consent Letter", "Consent Letter"),
         ("Driver Licence", "doc-front.jpg"),
         ("Driver Licence", "doc-back.jpg"),
     ])
-    def test_docs_gap_10_name_persists_after_save(self, docs_gap_ready, group, filename):
+    def test_docs_gap_10_name_persists_after_save(
+            self, docs_gap_ready, group, filename
+    ):
         new_name = "Automation Document " + uuid.uuid4().hex[:8]
+
+        # Open Modify popup
         modal = self.individual.docs_gap_modify(filename, group)
+
+        # Update document name
         self.individual.docs_gap_set_name(modal, new_name)
+
+        # Set a valid expiry date before saving
+        self.individual.docs_gap_set_expiry(
+            modal, "31-12-2030"
+        )
+
+        # Save document changes
         self.individual.docs_gap_save(modal)
+
+        # Reload page to verify persistence
         self.page.reload(wait_until="domcontentloaded")
+
+        # Open Documents verification section
         self.individual.docs_gap_open("Verify")
-        card = self._docs_gap_modified_card(group, filename, new_name)
-        self.individual.docs_gap_action(card, "Modify").click()
+
+        # Find the updated document
+        card = self._docs_gap_modified_card(
+            group, filename, new_name
+        )
+
+        # Reopen Modify popup
+        self.individual.docs_gap_action(
+            card, "Modify"
+        ).click()
+
         reopened = self.individual.docs_gap_modal()
-        name, _ = self.individual.docs_gap_modify_fields(reopened)
+
+        # Verify updated name persisted
+        name, expiry = self.individual.docs_gap_modify_fields(
+            reopened
+        )
+
         expect(name).to_have_value(new_name)
+
+        # Verify expiry date persisted
+        expect(expiry).to_have_value("31-12-2030")
+
+        # Close popup
         self.individual.docs_gap_cancel(reopened)
 
-    # 11 - Required indicator for Document Name.
     @pytest.mark.parametrize("group,filename", [
         ("Consent Letter", "Consent Letter"),
         ("Driver Licence", "doc-front.jpg"),
@@ -2556,3 +2623,288 @@ class TestIndividualOnboarding:
 
         print("Risk 16 PASSED: Verification details persisted.")
 
+
+
+
+    # =========================================================
+    # KYC FORM - REMAINING EXCEL COVERAGE (43-46)
+    # =========================================================
+
+    def test_kyc_43_extracted_name_prefilled(self, document_files):
+        # Complete document verification and open the review screen
+        self.prepare_review_extracted_information(document_files)
+
+        # Capture the extracted name before leaving the review screen
+        first_name_input = self.individual.review_first_name_input
+        last_name_input = self.individual.review_last_name_input
+
+        expect(first_name_input).to_be_visible(timeout=15000)
+        expect(last_name_input).to_be_visible(timeout=15000)
+
+        first_name = first_name_input.input_value().strip()
+        last_name = last_name_input.input_value().strip()
+
+        assert first_name, "Extracted First Name is empty"
+        assert last_name, "Extracted Last Name is empty"
+
+        expected_full_name = f"{first_name} {last_name}"
+
+        print("Extracted full name:", expected_full_name)
+
+        # Finish the existing review workflow
+        self.individual.select_first_review_dropdown_option("Gender")
+        self.individual.click_review_save_confirm()
+        self.individual.verify_review_submission_successful()
+
+        # Navigate to KYC
+        self.individual.open_kyc_form()
+        self.individual.kyc_assert_loaded()
+
+        # Compare the actual KYC value with the extracted name
+        self.individual.kyc_verify_extracted_full_name(
+            expected_full_name
+        )
+
+
+    def test_kyc_44_dob_calendar_icon_visible(self, kyc_ready):
+        self.individual.kyc_verify_calendar_icon(0)
+
+
+    def test_kyc_45_passport_issue_calendar_icon_visible(self, kyc_ready):
+        self.individual.kyc_verify_calendar_icon(1)
+
+
+    def test_kyc_46_passport_expiry_calendar_icon_visible(self, kyc_ready):
+        self.individual.kyc_verify_calendar_icon(2)
+
+
+
+    # =========================================================
+    # RISK RATING RANGE - REMAINING EXCEL TESTS (17-22)
+    # =========================================================
+
+    def test_risk_17_rating_range_heading_visible(self, risk_ready):
+        self.individual.risk_verify_rating_range_heading()
+
+    def test_risk_18_rating_column_header_visible(self, risk_ready):
+        self.individual.risk_verify_rating_column_header()
+
+    def test_risk_19_range_column_header_visible(self, risk_ready):
+        self.individual.risk_verify_range_column_header()
+
+    def test_risk_20_all_rating_levels_visible(self, risk_ready):
+        self.individual.risk_verify_all_rating_levels()
+
+    def test_risk_21_rating_score_ranges_correct(self, risk_ready):
+        self.individual.risk_verify_rating_score_ranges()
+
+    def test_risk_22_rating_colors_correct(self, risk_ready):
+        self.individual.risk_verify_rating_colors()
+
+
+    # =========================================================
+    # KYC PARTIAL COVERAGE COMPLETION
+    # =========================================================
+
+    def test_kyc_partial_350_active_tab(self, kyc_ready):
+        self.individual.kyc_partial_verify_active_tab()
+
+    def test_kyc_partial_354_section_01(self, kyc_ready):
+        self.individual.kyc_partial_verify_section_01()
+
+    def test_kyc_partial_359_gender_label(self, kyc_ready):
+        self.individual.kyc_partial_verify_label("Gender")
+
+    def test_kyc_partial_379_nationality_heading(self, kyc_ready):
+        self.individual.kyc_partial_verify_box_heading(
+            "Nationality"
+        )
+
+    def test_kyc_partial_386_passport_heading(self, kyc_ready):
+        self.individual.kyc_partial_verify_box_heading(
+            "Passport"
+        )
+
+    def test_kyc_partial_399_address_heading(self, kyc_ready):
+        self.individual.kyc_partial_verify_box_heading(
+            "Address"
+        )
+
+    def test_kyc_partial_400_home_address_label(self, kyc_ready):
+        self.individual.kyc_partial_verify_label(
+            "Home Country or Permanent Address"
+        )
+
+    def test_kyc_partial_403_residency_address_label(self, kyc_ready):
+        self.individual.kyc_partial_verify_label(
+            "Current Residency Address"
+        )
+
+    def test_kyc_partial_410_all_wealth_options(self, kyc_ready):
+        self.individual.kyc_partial_verify_wealth_options()
+
+
+    # =========================================================
+    # RISK ASSESSMENT - PARTIAL COVERAGE BATCH 1
+    # =========================================================
+
+    def test_risk_partial_413_active_tab(self, risk_ready):
+        self.individual.risk_partial_verify_active_tab()
+
+    def test_risk_partial_414_country_heading(self, risk_ready):
+        self.individual.risk_partial_verify_pink_heading(
+            "Country / Jurisdiction Risk"
+        )
+
+    def test_risk_partial_417_individual_heading(self, risk_ready):
+        self.individual.risk_partial_verify_pink_heading(
+            "Individual Risk"
+        )
+
+    def test_risk_partial_420_residential_heading(self, risk_ready):
+        self.individual.risk_partial_verify_pink_heading(
+            "Australian Residential Status"
+        )
+
+    def test_risk_partial_423_transfer_heading(self, risk_ready):
+        self.individual.risk_partial_verify_pink_heading(
+            "Transfer of Funds"
+        )
+
+    def test_risk_partial_426_adverse_media_heading(self, risk_ready):
+        self.individual.risk_partial_verify_pink_heading(
+            "Adverse Media"
+        )
+
+    def test_risk_partial_449_classification_placement(
+        self, risk_ready
+    ):
+        self.individual.risk_partial_verify_classification_placement()
+
+
+
+    # =========================================================
+    # RISK ASSESSMENT - PARTIAL COVERAGE BATCH 2
+    # =========================================================
+
+    def test_risk_partial_430_summary_headers(self, risk_ready):
+        self.individual.risk_partial_verify_summary_headers()
+
+    def test_risk_partial_431_five_risk_factors(self, risk_ready):
+        self.individual.risk_partial_verify_summary_factors()
+
+    def test_risk_partial_432_country_selected(self, risk_ready):
+        self.individual.risk_partial_verify_selected_factor(
+            "Country / Jurisdiction Risk"
+        )
+
+    def test_risk_partial_433_individual_selected(self, risk_ready):
+        self.individual.risk_partial_verify_selected_factor(
+            "Individual Risk"
+        )
+
+    def test_risk_partial_434_residential_selected(self, risk_ready):
+        self.individual.risk_partial_verify_selected_factor(
+            "Australian Residential Status"
+        )
+
+    def test_risk_partial_435_transfer_selected(self, risk_ready):
+        self.individual.risk_partial_verify_selected_factor(
+            "Transfer of Funds"
+        )
+
+    def test_risk_partial_436_adverse_media_selected(
+        self, risk_ready
+    ):
+        self.individual.risk_partial_verify_selected_factor(
+            "Adverse Media"
+        )
+
+    def test_risk_partial_437_risk_scores(self, risk_ready):
+        self.individual.risk_partial_verify_all_scores()
+
+
+
+    def test_risk_partial_437_country_score_sync(
+        self, risk_ready
+    ):
+        self.individual.risk_partial_verify_country_score_sync()
+        self.individual.risk_partial_verify_all_scores()
+
+
+    def test_risk_partial_416_country_radio_mutual_exclusivity(
+        self, risk_ready
+    ):
+        self.individual.risk_partial_416_verify_country_radio_options()
+
+
+
+    def test_risk_partial_441_inspect_update_notification(
+        self, risk_ready
+    ):
+        self.individual.risk_partial_441_inspect_update_notification()
+
+
+    def test_risk_partial_441_update_changes_notification(
+        self, page
+    ):
+        self.individual.risk_441_open_existing_client_assessment()
+
+        self.individual.risk_441_verify_update_notification()
+
+
+    def test_risk_partial_413_active_tab_pink(
+        self, page
+    ):
+        # Reuse the existing-client navigation
+        # established for Excel 441.
+        self.individual.risk_441_open_existing_client_assessment()
+
+        # Verify active Risk Assessment tab styling.
+        self.individual.risk_413_verify_active_tab_pink()
+
+
+    def test_risk_excel_441_completion_alert(self, risk_ready):
+        self.individual.risk_441_verify_completion_alert()
+
+    def test_risk_excel_432_436_pink_attributes(self, risk_ready):
+        self.individual.risk_verify_five_selected_attributes_pink()
+
+    def test_risk_excel_416_complete_country_options(self, risk_ready):
+        self.individual.risk_416_verify_complete_country_options()
+
+    def test_risk_excel_437_score_weights(self, risk_ready):
+        self.individual.risk_437_verify_option_score_weights()
+
+    def test_risk_excel_450_classification_all_levels(
+        self, risk_ready
+    ):
+        self.individual.risk_450_verify_classification_for_all_levels()
+
+
+    # =========================================================
+    # KYC - FINAL 10 PARTIAL CHECKLIST SCENARIOS
+    # =========================================================
+
+    # Excel 350
+    def test_kyc_47_tab_active_style(self, kyc_ready):
+        self.individual.kyc_47_verify_active_tab_pink()
+
+    # Excel 354
+    def test_kyc_48_section_heading_style(self, kyc_ready):
+        self.individual.kyc_48_verify_section_01_pink()
+
+    # Excel 359, 379, 386, 399, 400, 403
+    def test_kyc_49_required_labels(self, kyc_ready):
+        self.individual.kyc_49_verify_six_exact_labels()
+
+    # Excel 410
+    def test_kyc_50_wealth_labels_exact(self, kyc_ready):
+        self.individual.kyc_50_verify_all_16_wealth_labels()
+
+    # Excel 412
+    def test_kyc_51_save_persists_values(self, kyc_ready):
+        self.individual.kyc_51_verify_save_persistence()
+
+    def test_kyc_51_check_address_blur_and_save(self, kyc_ready):
+        self.individual.kyc_51_check_address_blur_and_save()

@@ -1018,9 +1018,21 @@ class IndividualOnboardingPage:
         expect(self.document_back_input).to_have_count(1)
 
     def click_verification_submit(self):
-        expect(self.verification_submit_button).to_be_visible()
-        expect(self.verification_submit_button).to_be_enabled()
-        self.verification_submit_button.click()
+        submit_button = self.verification_submit_button
+
+        expect(submit_button).to_be_visible(timeout=15000)
+
+        try:
+            expect(submit_button).to_be_enabled(timeout=60000)
+        except AssertionError:
+            self.debug_onboarding_blocked(
+                "Verification Submit did not become enabled"
+            )
+            raise
+
+        submit_button.click(timeout=30000)
+
+        print("Verification Submit clicked successfully.")
 
     def get_verification_validation_messages(self):
         return self.page.locator(
@@ -1231,15 +1243,26 @@ class IndividualOnboardingPage:
         )
 
     def open_review_dropdown(self, field_name):
-        dropdown = self.get_review_dropdown(field_name)
-
-        expect(dropdown).to_be_visible()
-
-        dropdown.locator(".ant-select-selector").click()
+        dropdown = (
+            self.page.locator("label")
+            .filter(
+                has_text=re.compile(
+                    rf"^\s*{re.escape(field_name)}\s*$"
+                )
+            )
+            .locator("..")
+            .locator(".ant-select")
+        )
 
         expect(
-            self.page.locator(".ant-select-dropdown:visible")
-        ).to_be_visible()
+            self.page.locator(".progress-overlay")
+        ).to_be_hidden(timeout=60000)
+
+        selector = dropdown.locator(".ant-select-selector")
+
+        expect(selector).to_be_visible()
+        selector.click(timeout=30000)
+
 
     def verify_review_dropdown_selected_value(self, field_name, value):
         dropdown = self.get_review_dropdown(field_name)
@@ -1288,13 +1311,25 @@ class IndividualOnboardingPage:
         expect(save_button).to_be_enabled()
 
     def click_review_save_confirm(self):
-        self.verify_review_save_confirm_button()
-
-        self.page.get_by_role(
+        save_button = self.page.get_by_role(
             "button",
             name="Save & Confirm",
             exact=True
-        ).click()
+        )
+
+        expect(save_button).to_be_visible(timeout=15000)
+
+        try:
+            expect(save_button).to_be_enabled(timeout=60000)
+        except AssertionError:
+            self.debug_onboarding_blocked(
+                "Save & Confirm did not become enabled"
+            )
+            raise
+
+        save_button.click(timeout=30000)
+
+        print("Save & Confirm clicked successfully.")
 
     def inspect_review_save_result(self):
         # Wait briefly for a save response or navigation.
@@ -1339,15 +1374,26 @@ class IndividualOnboardingPage:
             exact=True
         )
 
-        # Verify at least one matching success heading is visible.
-        expect(success_heading.first).to_be_visible(timeout=15000)
+        try:
+            expect(success_heading.first).to_be_visible(
+                timeout=60000
+            )
+
+        except AssertionError:
+            self.debug_onboarding_blocked(
+                "Submission Successful screen did not load"
+            )
+            raise
 
         success_message = self.page.get_by_text(
-            "Your information has been received and is being processed for onboarding.",
+            "Your information has been received and is being "
+            "processed for onboarding.",
             exact=True
         )
 
-        expect(success_message.first).to_be_visible()
+        expect(success_message.first).to_be_visible(
+            timeout=15000
+        )
 
         finish_button = self.page.get_by_role(
             "button",
@@ -1355,10 +1401,16 @@ class IndividualOnboardingPage:
             exact=True
         )
 
-        expect(finish_button.first).to_be_visible()
-        expect(finish_button.first).to_be_enabled()
+        expect(finish_button.first).to_be_visible(
+            timeout=15000
+        )
+
+        expect(finish_button.first).to_be_enabled(
+            timeout=15000
+        )
 
         print("Submission Successful screen verified.")
+
 
     def click_finish_and_view_submitted_documents(self):
         button = self.page.get_by_role(
@@ -1387,7 +1439,14 @@ class IndividualOnboardingPage:
             exact=True
         )
 
-        expect(review_heading).to_be_visible(timeout=90000)
+        try:
+            expect(review_heading).to_be_visible(timeout=90000)
+
+        except AssertionError:
+            self.debug_onboarding_blocked(
+                "Review Extracted Information did not load"
+            )
+            raise
 
         print("Review Extracted Information screen loaded.")
 
@@ -4004,13 +4063,46 @@ class IndividualOnboardingPage:
         return self.get_verify_document_card(group_name, file_name)
 
     def docs_gap_action(self, item, action):
-        """Resolve an existing action button by its title, not by icon text."""
+        """Find a document action button and wait for it to be ready."""
+
+        expect(item).to_be_visible(timeout=30000)
+
         button = item.locator(f'button[title="{action}"]')
-        if button.count() == 0:
-            button = item.get_by_role("button", name=action, exact=True)
+
+        try:
+            expect(button).to_be_visible(timeout=15000)
+
+        except AssertionError:
+            # Fallback to accessible button name
+            button = item.get_by_role(
+                "button",
+                name=action,
+                exact=True
+            )
+
+            try:
+                expect(button).to_be_visible(timeout=10000)
+
+            except AssertionError:
+                print(f"\nDOCUMENT ACTION NOT FOUND: {action}")
+                print("Document card HTML:")
+                print(item.evaluate("(element) => element.outerHTML"))
+
+                print("Buttons in document card:")
+                print(item.locator("button").evaluate_all("""
+                    buttons => buttons.map(button => ({
+                        title: button.getAttribute("title"),
+                        ariaLabel: button.getAttribute("aria-label"),
+                        text: button.innerText,
+                        disabled: button.disabled
+                    }))
+                """))
+
+                raise
+
         expect(button).to_have_count(1)
-        expect(button).to_be_visible()
-        expect(button).to_be_enabled()
+        expect(button).to_be_enabled(timeout=15000)
+
         return button
 
     def docs_gap_modal(self, kind=None):
@@ -4127,15 +4219,38 @@ class IndividualOnboardingPage:
     def docs_gap_verify_required_name(self, modal):
         expect(modal).to_be_visible()
 
-        modal_text = modal.inner_text()
+        # Find the Document Name label
+        label = modal.locator("label").filter(
+            has_text=re.compile(r"Document\s+Name", re.I)
+        ).first
 
-        assert re.search(
-            r"Document\s+Name\s*\*",
-            modal_text
+        expect(label).to_be_visible()
+
+        # Inspect CSS-generated required marker
+        marker = label.evaluate("""
+            (el) => {
+                const before = window.getComputedStyle(el, "::before").content;
+                const after = window.getComputedStyle(el, "::after").content;
+
+                return {
+                    before: before,
+                    after: after,
+                    html: el.outerHTML
+                };
+            }
+        """)
+
+        print("Document Name marker details:", marker)
+
+        assert (
+                "*" in marker["before"]
+                or "*" in marker["after"]
+                or "*" in label.inner_text()
         ), (
-            "Document Name required marker (*) was not found. "
-            f"Modal text: {modal_text}"
+            "Document Name required (*) marker was not found. "
+            f"Details: {marker}"
         )
+
 
     def docs_gap_verify_uploaded_date_readonly(self, modal):
         expect(modal.get_by_text("Uploaded Date", exact=False).first).to_be_visible()
@@ -4150,50 +4265,88 @@ class IndividualOnboardingPage:
         name.fill(new_name)
         expect(name).to_have_value(new_name)
 
-    def docs_gap_set_expiry(self, modal, value="2030-12-31"):
-        """Fill the date field if editable; report picker-only controls explicitly."""
+    def docs_gap_set_expiry(self, modal, value="31-12-2030"):
+        """Enter an expiry date and verify it survives blur."""
+
         _, expiry = self.docs_gap_modify_fields(modal)
+
+        expect(expiry).to_be_visible()
         expect(expiry).to_be_enabled()
+
+        print("\nEXPIRY DATE FIELD DETAILS")
+        print("Input type:", expiry.get_attribute("type"))
+        print("Read-only:", expiry.get_attribute("readonly"))
+        print("Input HTML:", expiry.evaluate("(el) => el.outerHTML"))
+
         expiry.click()
-        if expiry.is_editable():
-            expiry.fill(value)
-            expiry.press("Tab")
-            expect(expiry).not_to_have_value("")
-        else:
+
+        if not expiry.is_editable():
             raise AssertionError(
-                "Expiry Date is picker-only. Supply the calendar HTML to implement "
-                "year/month/day selection without guessing."
+                "Expiry Date is picker-only. "
+                "Calendar selection must be implemented."
             )
 
+        expiry.fill(value)
+
+        print("Value after fill:", repr(expiry.input_value()))
+
+        expect(expiry).to_have_value(value)
+
+        expiry.press("Tab")
+
+        print("Value after Tab:", repr(expiry.input_value()))
+
+        expect(expiry).to_have_value(
+            value,
+            timeout=5000
+        )
+
+
     def docs_gap_save(self, modal):
-        save = modal.get_by_role(
+        expect(modal).to_be_visible()
+
+        save_button = modal.get_by_role(
             "button", name="Save", exact=True
         )
 
-        expect(save).to_be_enabled()
+        expect(save_button).to_be_enabled()
 
-        save.click()
+        with self.page.expect_response(
+                lambda response:
+                "/api/v1/documents/update" in response.url
+                and response.request.method == "PUT",
+                timeout=30000
+        ) as response_info:
+            save_button.click()
+
+        response = response_info.value
+
+        print("\nDOCUMENT UPDATE API DIAGNOSTICS")
+        print("HTTP Status:", response.status)
+
+        # Only print non-sensitive fields from the request.
+        payload = response.request.post_data_json
+
+        if isinstance(payload, dict):
+            print("Request field names:", list(payload.keys()))
+            print("Document name:", payload.get("fileName"))
+            print("Expiry date:", payload.get("expiryDate"))
 
         try:
-            expect(modal).to_be_hidden(timeout=10000)
+            response_body = response.json()
+            if isinstance(response_body, dict):
+                print("Response message:", response_body.get("message"))
+                print("Response error:", response_body.get("error"))
+            else:
+                print("Response type:", type(response_body).__name__)
+        except ValueError:
+            print("Response was not valid JSON")
 
-        except AssertionError:
-            print("\nDOCUMENT SAVE DIAGNOSTICS")
-            print("Modal still visible:", modal.is_visible())
-            print("Modal content:", modal.inner_text())
+        assert response.ok, (
+            f"Document update API failed with HTTP {response.status}"
+        )
 
-            name = modal.get_by_placeholder(
-                "Enter document name"
-            )
-            expiry = modal.get_by_placeholder(
-                "Select expiry date"
-            )
-
-            print("Document name:", name.input_value())
-            print("Expiry date:", expiry.input_value())
-            print("Expiry invalid:", expiry.get_attribute("aria-invalid"))
-
-            raise
+        expect(modal).to_be_hidden(timeout=30000)
 
     def docs_gap_confirm_delete(self, modal):
         """Confirm deletion and wait for the confirmation to close."""
@@ -4251,3 +4404,2155 @@ class IndividualOnboardingPage:
         expect(client).to_be_visible()
         expect(client.locator("span")).to_have_text("N/A")
 
+    def debug_onboarding_blocked(self, stage):
+        print(f"\n===== ONBOARDING DEBUG: {stage} =====")
+        print("Current URL:", self.page.url)
+
+        for button_name in ["Submit", "Save & Confirm"]:
+            button = self.page.get_by_role(
+                "button", name=button_name, exact=False
+            )
+
+            if button.count():
+                print(
+                    f"{button_name}: "
+                    f"visible={button.first.is_visible()}, "
+                    f"enabled={button.first.is_enabled()}"
+                )
+
+        invalid_fields = self.page.locator(
+            'input[aria-invalid="true"], '
+            'select[aria-invalid="true"], '
+            'textarea[aria-invalid="true"]'
+        )
+
+        print("Invalid field count:", invalid_fields.count())
+
+        for index in range(invalid_fields.count()):
+            field = invalid_fields.nth(index)
+            print("Invalid field:", field.evaluate(
+                "(el) => el.outerHTML"
+            ))
+
+        print("Visible error messages:")
+        for selector in [
+            ".ant-form-item-explain-error",
+            "[role='alert']",
+            ".error-message",
+        ]:
+            matches = self.page.locator(selector + ":visible")
+            for index in range(matches.count()):
+                print(matches.nth(index).inner_text())
+
+        print("====================================\n")
+
+    def kyc_verify_extracted_full_name(self, expected_full_name):
+        """Verify KYC Full Legal Name matches the extracted document name."""
+
+        full_name = self.kyc_text_input("full_name")
+
+        expect(full_name).to_be_visible(timeout=15000)
+
+        expected_full_name = " ".join(expected_full_name.split())
+
+        assert expected_full_name, (
+            "Expected extracted full name is empty."
+        )
+
+        expect(full_name).to_have_value(
+            expected_full_name,
+            timeout=15000
+        )
+
+        print(
+            f"KYC Full Legal Name matches extracted name: "
+            f"{expected_full_name}"
+        )
+
+    def kyc_verify_calendar_icon(self, index):
+        """
+        Verify the calendar icon inside a KYC date picker.
+
+        0 = Date of Birth
+        1 = Passport Date of Issue
+        2 = Passport Date of Expiry
+        """
+
+        field_names = {
+            0: "Date of Birth",
+            1: "Passport Date of Issue",
+            2: "Passport Date of Expiry",
+        }
+
+        assert index in field_names, (
+            f"Unsupported KYC date field index: {index}"
+        )
+
+        date_input = self.kyc_date_input(index)
+
+        expect(date_input).to_be_visible(timeout=15000)
+
+        # Find the Ant Design date-picker container
+        picker = date_input.locator(
+            "xpath=ancestor::*[contains("
+            "concat(' ', normalize-space(@class), ' '), "
+            "' ant-picker ')][1]"
+        )
+
+        expect(picker).to_be_visible()
+
+        # Calendar icon rendered inside the date picker
+        calendar_icon = picker.locator(
+            ".ant-picker-suffix .anticon-calendar, "
+            ".ant-picker-suffix svg"
+        ).first
+
+        expect(calendar_icon).to_be_visible(timeout=10000)
+
+        print(
+            f"Calendar icon verified: {field_names[index]}"
+        )
+
+
+    # =========================================================
+    # RISK RATING RANGE TABLE - EXCEL COVERAGE 17-22
+    # =========================================================
+
+    def risk_rating_range_table(self):
+        table = self.page.locator("table.signature-table").filter(
+            has=self.page.locator("thead th").filter(
+                has_text=re.compile(r"^\s*Risk Rating Range\s*$")
+            )
+        )
+
+        expect(table).to_have_count(1, timeout=15000)
+        return table
+
+    def risk_rating_range_row(self, rating):
+        if rating not in ("High", "Medium", "Low"):
+            raise ValueError(f"Unknown risk rating: {rating}")
+
+        table = self.risk_rating_range_table()
+
+        row = table.locator("tbody tr").filter(
+            has=self.page.locator("td:first-child").filter(
+                has_text=re.compile(
+                    rf"^\s*{re.escape(rating)}\s*$"
+                )
+            )
+        )
+
+        expect(row).to_have_count(1)
+        return row
+
+    def risk_verify_rating_range_heading(self):
+        heading = self.risk_rating_range_table().locator(
+            "thead th"
+        )
+
+        expect(heading).to_have_count(1)
+        expect(heading).to_have_text("Risk Rating Range")
+        expect(heading).to_have_attribute("colspan", "2")
+        expect(heading).to_be_visible()
+
+    def risk_verify_rating_column_header(self):
+        header = self.risk_rating_range_table().locator(
+            "tbody tr:first-child td:first-child"
+        )
+
+        expect(header).to_be_visible()
+        expect(header).to_have_text("Rating")
+
+    def risk_verify_range_column_header(self):
+        header = self.risk_rating_range_table().locator(
+            "tbody tr:first-child td:nth-child(2)"
+        )
+
+        expect(header).to_be_visible()
+        expect(header).to_have_text("Range")
+
+    def risk_verify_all_rating_levels(self):
+        for rating in ("High", "Medium", "Low"):
+            row = self.risk_rating_range_row(rating)
+            expect(row.locator("td").first).to_be_visible()
+            expect(row.locator("td").first).to_have_text(rating)
+
+    def risk_verify_rating_score_ranges(self):
+        expected_ranges = {
+            "High": "16 and above",
+            "Medium": "6 to 15",
+            "Low": "0 to 5",
+        }
+
+        for rating, expected_range in expected_ranges.items():
+            row = self.risk_rating_range_row(rating)
+            expect(row.locator("td").nth(1)).to_have_text(
+                expected_range
+            )
+
+    def risk_verify_rating_colors(self):
+        expected_classes = {
+            "High": ("bg-red-300", "dark:bg-red-950"),
+            "Medium": ("bg-yellow-100", "dark:bg-yellow-950"),
+            "Low": ("bg-emerald-100", "dark:bg-emerald-950"),
+        }
+
+        for rating, (light_class, dark_class) in expected_classes.items():
+            cell = self.risk_rating_range_row(rating).locator(
+                "td"
+            ).first
+
+            expect(cell).to_be_visible()
+
+            classes = cell.get_attribute("class") or ""
+            class_tokens = classes.split()
+
+            assert light_class in class_tokens, (
+                f"{rating}: missing light-mode class {light_class}. "
+                f"Actual classes: {classes}"
+            )
+
+            assert dark_class in class_tokens, (
+                f"{rating}: missing dark-mode class {dark_class}. "
+                f"Actual classes: {classes}"
+            )
+
+            # Check that a real background color is rendered,
+            # rather than only checking the HTML class names.
+            background = cell.evaluate(
+                "(element) => getComputedStyle(element).backgroundColor"
+            )
+
+            assert background not in (
+                "transparent",
+                "rgba(0, 0, 0, 0)",
+                ""
+            ), (
+                f"{rating}: background color is not rendered. "
+                f"Computed value: {background}"
+            )
+
+            print(f"{rating}: background color = {background}")
+
+
+
+
+    # =========================================================
+    # KYC - PARTIALLY COVERED EXCEL SCENARIOS
+    # =========================================================
+
+    def kyc_partial_form(self):
+        form = self.page.locator(".kyc-form")
+        expect(form).to_be_visible(timeout=15000)
+        return form
+
+
+    def kyc_partial_verify_active_tab(self):
+        """Verify the KYC Form tab is active and inspect its styling."""
+
+        active_tabs = self.page.locator(".tab-z-option.active")
+
+        # Diagnostic: identify all elements marked active
+        print(
+            "All active tabs:",
+            active_tabs.all_text_contents()
+        )
+
+        # Select only the active KYC Form tab
+        kyc_tab = active_tabs.filter(
+            has_text=re.compile(r"KYC\s*Form", re.IGNORECASE)
+        )
+
+        expect(kyc_tab).to_have_count(1, timeout=15000)
+        expect(kyc_tab).to_be_visible()
+        expect(kyc_tab).to_contain_text("KYC Form")
+
+        styles = kyc_tab.evaluate("""
+            el => {
+                const s = getComputedStyle(el);
+                const label = el.querySelector("label");
+                const l = label ? getComputedStyle(label) : null;
+
+                return {
+                    classes: el.className,
+                    background: s.backgroundColor,
+                    color: s.color,
+                    borderBottom: s.borderBottomColor,
+                    boxShadow: s.boxShadow,
+                    labelColor: l ? l.color : null,
+                    beforeBackground:
+                        getComputedStyle(el, "::before").backgroundColor,
+                    afterBackground:
+                        getComputedStyle(el, "::after").backgroundColor
+                };
+            }
+        """)
+
+        print("KYC active tab styles:", styles)
+        print("KYC Form tab verified as active.")
+
+
+    def kyc_partial_verify_section_01(self):
+        section = self.kyc_partial_form().locator(
+            ".section-header"
+        ).filter(
+            has=self.page.locator("h6").filter(
+                has_text="SECTION 01 - KYC PROFILE OF THE CLIENT"
+            )
+        )
+
+        expect(section).to_have_count(1)
+        expect(section).to_be_visible()
+
+        expect(section.locator("h6")).to_have_text(
+            "SECTION 01 - KYC PROFILE OF THE CLIENT"
+        )
+
+        print(
+            "KYC Section 01 background:",
+            section.evaluate(
+                "(el) => getComputedStyle(el).backgroundColor"
+            )
+        )
+
+        background = section.evaluate(
+            "(el) => getComputedStyle(el).backgroundColor"
+        )
+
+        assert background == "color(srgb 0.792157 0.207843 0.501961 / 0.3)", (
+            f"Unexpected Section 01 background: {background}"
+        )
+
+    def kyc_partial_verify_label(self, label_text):
+        label = self.kyc_partial_form().locator(
+            "label"
+        ).get_by_text(
+            label_text,
+            exact=True
+        )
+
+        expect(label).to_have_count(1)
+        expect(label).to_be_visible()
+
+        print(f"KYC label verified: {label_text}")
+
+    def kyc_partial_verify_box_heading(self, heading):
+        box_label = self.kyc_partial_form().locator(
+            ".border-box > .border-box-label"
+        ).filter(
+            has_text=heading
+        )
+
+        expect(box_label).to_have_count(1)
+        expect(box_label).to_have_text(heading)
+        expect(box_label).to_be_visible()
+
+        print(f"KYC section heading verified: {heading}")
+
+    def kyc_partial_verify_wealth_options(self):
+        expected_options = [
+            "Employment Income / Salary",
+            "Savings",
+            "Mortgage / Loan",
+            "Sale of Property",
+            "Business Income",
+            "Investment Income",
+            "Sale of Investments / Shares",
+            "Inheritance",
+            "Gift",
+            "Superannuation / Pension",
+            "Trust Distribution",
+            "Insurance Payout",
+            "Legal Settlement / Compensation",
+            "Cryptocurrency Assets",
+            "Overseas Funds",
+            "Other",
+        ]
+
+        wealth_section = self.kyc_partial_form().locator(
+            ".header-box"
+        ).filter(
+            has=self.page.locator(
+                ".header-box-label"
+            ).filter(
+                has_text="Source of Wealth"
+            )
+        )
+
+        expect(wealth_section).to_have_count(1)
+        expect(wealth_section).to_be_visible()
+
+        checkboxes = wealth_section.locator(
+            ".ant-checkbox-group input[type='checkbox']"
+        )
+
+        expect(checkboxes).to_have_count(16)
+
+        actual_options = checkboxes.evaluate_all(
+            "elements => elements.map(el => el.value)"
+        )
+
+        assert actual_options == expected_options, (
+            "Source of Wealth options do not match.\n"
+            f"Expected: {expected_options}\n"
+            f"Actual: {actual_options}"
+        )
+
+        for option in expected_options:
+            expect(
+                wealth_section.get_by_text(option, exact=True)
+            ).to_be_visible()
+
+        print("All 16 Source of Wealth options verified.")
+
+
+
+    # =========================================================
+    # RISK ASSESSMENT - PARTIAL COVERAGE BATCH 1
+    # Excel: 413, 414, 417, 420, 423, 426, 449
+    # =========================================================
+
+    def risk_partial_verify_active_tab(self):
+        tab = self.page.locator(
+            ".tab-z-option.active"
+        ).filter(
+            has_text=re.compile(
+                r"^\s*Risk Assessment\s*$",
+                re.IGNORECASE
+            )
+        )
+
+        expect(tab).to_have_count(1)
+        expect(tab).to_be_visible()
+
+        # Record the actual styles before adding an
+        # application-specific pink highlight assertion.
+        styles = tab.evaluate("""
+            el => {
+                const s = getComputedStyle(el);
+                const label = el.querySelector("label");
+                const ls = label ? getComputedStyle(label) : null;
+
+                return {
+                    background: s.backgroundColor,
+                    color: s.color,
+                    borderBottom: s.borderBottomColor,
+                    boxShadow: s.boxShadow,
+                    labelColor: ls ? ls.color : null,
+                    beforeBackground:
+                        getComputedStyle(el, "::before").backgroundColor,
+                    afterBackground:
+                        getComputedStyle(el, "::after").backgroundColor
+                };
+            }
+        """)
+
+        print("Risk Assessment active tab styles:", styles)
+
+    def risk_partial_section_header(self, heading):
+        header = self.page.locator(
+            ".custom-form .section-header"
+        ).filter(
+            has=self.page.locator("h6").filter(
+                has_text=re.compile(
+                    rf"^\s*{re.escape(heading)}\s*$"
+                )
+            )
+        )
+
+        expect(header).to_have_count(1)
+        return header
+
+    def risk_partial_verify_pink_heading(self, heading):
+        header = self.risk_partial_section_header(heading)
+
+        expect(header).to_be_visible()
+        expect(header.locator("h6")).to_have_text(heading)
+
+        # Convert browser CSS colors (including color(srgb))
+        # into actual RGBA channels.
+        rgba = header.evaluate("""
+            el => {
+                const color = getComputedStyle(el).backgroundColor;
+                const canvas = document.createElement("canvas");
+                canvas.width = 1;
+                canvas.height = 1;
+
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, 1, 1);
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, 1, 1);
+
+                return Array.from(
+                    ctx.getImageData(0, 0, 1, 1).data
+                );
+            }
+        """)
+
+        red, green, blue, alpha = rgba
+
+        # Check a visible pink/magenta tint rather than
+        # only checking that a background exists.
+        assert (
+            alpha >= 20
+            and red > green * 1.5
+            and blue > green * 1.25
+        ), (
+            f"{heading}: expected pink section background, "
+            f"actual RGBA={rgba}"
+        )
+
+        print(f"{heading}: pink header verified, RGBA={rgba}")
+
+    def risk_partial_verify_classification_placement(self):
+        rating_table = self.risk_rating_range_table()
+
+        # Classification is the next sibling of the rating
+        # table inside the right-hand flex column.
+        classification = rating_table.locator(
+            "xpath=following-sibling::div[1]"
+        )
+
+        expect(classification).to_have_count(1)
+        expect(classification).to_be_visible()
+        expect(classification).to_contain_text(
+            re.compile(
+                r"Risk Classification:\s*(Low|Medium|High)"
+            )
+        )
+
+        table_box = rating_table.bounding_box()
+        classification_box = classification.bounding_box()
+
+        assert table_box is not None
+        assert classification_box is not None
+
+        table_bottom = table_box["y"] + table_box["height"]
+
+        assert classification_box["y"] >= table_bottom - 1, (
+            "Risk Classification is not below "
+            "the Risk Rating Range table."
+        )
+
+        print(
+            "Risk Classification verified below "
+            "Risk Rating Range table."
+        )
+
+
+
+    # =========================================================
+    # RISK ASSESSMENT - PARTIAL COVERAGE BATCH 2
+    # Excel: 430-437
+    # =========================================================
+
+    RISK_PARTIAL_GROUPS = [
+        ("Country / Jurisdiction Risk",
+         "Country / Jurisdiction Risk", [1, 3, 5]),
+        ("Individual Risk",
+         "Politically Exposed Person (PEP) Status", [1, 3, 5]),
+        ("Australian Residential Status",
+         "Australian Residential Status", [1, 3]),
+        ("Transfer of Funds",
+         "Transfer of Funds", [1, 3]),
+        ("Adverse Media",
+         "Adverse Media", [1, 3]),
+    ]
+
+    def risk_partial_summary_rows(self):
+        table = self.risk_summary_table()
+        expect(table).to_be_visible()
+
+        # Twelve attribute rows, followed by Total Score.
+        rows = table.locator("tbody tr")
+        expect(rows).to_have_count(13)
+        return rows
+
+    def risk_partial_verify_summary_headers(self):
+        headers = self.risk_summary_table().locator("thead th")
+
+        expect(headers).to_have_text([
+            "Risk Factor",
+            "Attribute",
+            "Risk Score",
+        ])
+
+        print("Risk summary column headers verified.")
+
+    def risk_partial_verify_summary_factors(self):
+        rows = self.risk_partial_summary_rows()
+
+        factors = rows.locator("td[rowspan]")
+
+        expect(factors).to_have_text([
+            "Country / Jurisdiction Risk",
+            "Individual Risk",
+            "Australian Residential Status",
+            "Transfer of Funds",
+            "Adverse Media",
+        ])
+
+        print("All five Risk Factors verified.")
+
+    def risk_partial_verify_selected_factor(self, factor_name):
+        rows = self.risk_partial_summary_rows()
+
+        offset = 0
+        matched = False
+
+        for summary_name, group_name, scores in self.RISK_PARTIAL_GROUPS:
+            count = len(scores)
+
+            if summary_name != factor_name:
+                offset += count
+                continue
+
+            matched = True
+            group = self.risk_group(group_name)
+
+            radio_options = group.locator(
+                "label.ant-radio-wrapper"
+            )
+            expect(radio_options).to_have_count(count)
+
+            checked_indexes = [
+                index
+                for index in range(count)
+                if radio_options.nth(index)
+                .locator("input[type='radio']")
+                .is_checked()
+            ]
+
+            assert len(checked_indexes) == 1, (
+                f"{factor_name}: expected exactly one "
+                f"selected radio option, got {checked_indexes}"
+            )
+
+            selected_index = checked_indexes[0]
+            selected_radio = radio_options.nth(selected_index)
+
+            selected_text = selected_radio.locator(
+                ".ant-radio-label"
+            ).inner_text().strip()
+
+            # Country high-risk option contains multiple bullet
+            # points, but its summary shows only the first.
+            expected_attribute = (
+                selected_text.splitlines()[0].strip()
+            )
+
+            selected_row = rows.nth(offset + selected_index)
+
+            attribute_cell = selected_row.locator("td").nth(
+                1 if selected_index == 0 else 0
+            )
+
+            assert (
+                attribute_cell.inner_text().strip()
+                == expected_attribute
+            ), (
+                f"{factor_name}: summary attribute does not "
+                f"match selected radio option."
+            )
+
+            # Verify selected-row styling and pink indicator.
+            assert "font-semibold" in (
+                selected_row.get_attribute("class") or ""
+            ), f"{factor_name}: selected row not highlighted"
+
+            dot = attribute_cell.locator(
+                "span[style*='var(--primary)']"
+            )
+            expect(dot).to_be_visible()
+
+            score_cell = selected_row.locator("td").last
+            expect(score_cell.locator("span.font-bold")).to_have_text(
+                str(scores[selected_index])
+            )
+
+            background = attribute_cell.evaluate(
+                "(el) => getComputedStyle(el).backgroundColor"
+            )
+
+            print(
+                f"{factor_name}: selected={expected_attribute}, "
+                f"score={scores[selected_index]}, "
+                f"background={background}"
+            )
+            break
+
+        assert matched, f"Unknown risk factor: {factor_name}"
+
+
+    def risk_partial_verify_all_scores(self):
+        rows = self.risk_partial_summary_rows()
+
+        offset = 0
+        expected_total = 0
+
+        # Step 1: Calculate expected total from selected radios.
+        for summary_name, group_name, scores in self.RISK_PARTIAL_GROUPS:
+            group = self.risk_group(group_name)
+
+            radio_options = group.locator(
+                "label.ant-radio-wrapper"
+            )
+
+            expect(radio_options).to_have_count(len(scores))
+
+            selected_indexes = [
+                i for i in range(len(scores))
+                if radio_options.nth(i)
+                .locator("input[type='radio']")
+                .is_checked()
+            ]
+
+            assert len(selected_indexes) == 1, (
+                f"{summary_name}: expected exactly one "
+                f"selected radio option, got {selected_indexes}"
+            )
+
+            selected_index = selected_indexes[0]
+            selected_score = scores[selected_index]
+
+            expected_total += selected_score
+
+            print(
+                f"Radio selection: {summary_name} "
+                f"| index={selected_index} "
+                f"| score={selected_score}"
+            )
+
+            # Verify every displayed option score.
+            for index, expected_score in enumerate(scores):
+                row = rows.nth(offset + index)
+                score_cell = row.locator("td").last
+
+                assert score_cell.inner_text().strip() == str(
+                    expected_score
+                ), (
+                    f"{summary_name}, option {index}: "
+                    f"expected score {expected_score}, "
+                    f"got {score_cell.inner_text()}"
+                )
+
+            offset += len(scores)
+
+        # Step 2: Read the displayed total after the loop.
+        total_row = rows.last
+
+        expect(total_row.locator("td").first).to_have_text(
+            "Total Score"
+        )
+
+        actual_total = int(
+            total_row.locator("td").last.inner_text().strip()
+        )
+
+        # Step 3: Independently calculate highlighted total.
+        highlighted_total = 0
+
+        print("\n===== RISK SCORE DEBUG =====")
+        print("Expected total from radios:", expected_total)
+        print("Displayed total:", actual_total)
+
+        for row in rows.all()[:-1]:
+            if "font-semibold" not in (
+                row.get_attribute("class") or ""
+            ):
+                continue
+
+            cells = row.locator("td")
+            score = cells.last.inner_text().strip()
+
+            attribute_cell = cells.nth(
+                1 if cells.count() == 3 else 0
+            )
+
+            attribute = attribute_cell.inner_text().strip()
+
+            print(
+                f"Highlighted attribute: {attribute} "
+                f"| Score: {score}"
+            )
+
+            highlighted_total += int(score)
+
+        print(
+            "Total from highlighted summary rows:",
+            highlighted_total
+        )
+        print("============================\n")
+
+        # Step 4: Assert both independent calculations.
+        assert actual_total == expected_total, (
+            f"Radio score total mismatch: "
+            f"expected {expected_total}, "
+            f"displayed {actual_total}"
+        )
+
+        assert actual_total == highlighted_total, (
+            f"Highlighted score total mismatch: "
+            f"highlighted {highlighted_total}, "
+            f"displayed {actual_total}"
+        )
+
+        # Step 5: Verify classification.
+        expected_classification = (
+            "Low" if expected_total <= 5
+            else "Medium" if expected_total <= 15
+            else "High"
+        )
+
+
+        actual_classification = self.risk_classification()
+
+        assert actual_classification == expected_classification, (
+            f"Expected risk classification "
+            f"'{expected_classification}', "
+            f"got '{actual_classification}'"
+        )
+
+        print(
+            f"All risk scores verified. "
+            f"Total={actual_total}, "
+            f"Classification={expected_classification}"
+        )
+
+
+    def risk_partial_verify_country_score_sync(self):
+        group = self.risk_group(
+            "Country / Jurisdiction Risk"
+        )
+
+        radios = group.locator("input[type='radio']")
+        expect(radios).to_have_count(3)
+
+        rows = self.risk_partial_summary_rows()
+
+        country_options = [
+            ("low", 0, 1),
+            ("other", 1, 3),
+            ("high", 2, 5),
+        ]
+
+        for value, index, expected_score in country_options:
+            radio = radios.nth(index)
+
+            radio.check()
+            expect(radio).to_be_checked()
+
+            # Verify that the correct country summary row
+            # becomes selected after the radio interaction.
+            selected_row = rows.nth(index)
+
+            expect(selected_row).to_have_class(
+                re.compile(r"\bfont-semibold\b")
+            )
+
+            expect(
+                selected_row.locator("td").last
+            ).to_have_text(str(expected_score))
+
+            # Verify that other country rows are deselected.
+            for other_index in range(3):
+                if other_index == index:
+                    continue
+
+                expect(rows.nth(other_index)).not_to_have_class(
+                    re.compile(r"\bfont-semibold\b")
+                )
+
+            print(
+                f"Country option '{value}' synchronized "
+                f"with summary score {expected_score}"
+            )
+
+
+        # Restore Low Risk.
+        radios.nth(0).check()
+
+        expect(radios.nth(0)).to_be_checked()
+
+        # Verify the Low Risk row becomes selected.
+        expect(rows.nth(0)).to_have_class(
+            re.compile(r"\bfont-semibold\b")
+        )
+
+        # Inspect all Country / Jurisdiction summary rows.
+        print("\n===== COUNTRY RISK RESTORE DEBUG =====")
+
+        for index in range(3):
+            row = rows.nth(index)
+
+            print(
+                f"Row {index}: "
+                f"text={row.inner_text()!r}, "
+                f"class={row.get_attribute('class')!r}"
+            )
+
+        print(
+            "Radio values:",
+            [
+                {
+                    "value": radios.nth(i).get_attribute("value"),
+                    "checked": radios.nth(i).is_checked()
+                }
+                for i in range(3)
+            ]
+        )
+
+        print("====================================\n")
+
+        # Check that the restored Low Risk row
+        # displays its correct score.
+        expect(
+            rows.nth(0).locator("td").last
+        ).to_have_text("1", timeout=10000)
+
+        # Other Country Risk scores should remain unchanged.
+        expect(
+            rows.nth(1).locator("td").last
+        ).to_have_text("3")
+
+        expect(
+            rows.nth(2).locator("td").last
+        ).to_have_text("5")
+
+        print(
+            "Country Risk restored successfully: "
+            "Low=1, Other=3, High=5"
+        )
+
+
+
+    def risk_partial_416_verify_country_radio_options(self):
+        group = self.risk_group(
+            "Country / Jurisdiction Risk"
+        )
+
+        radios = group.locator("input[type='radio']")
+        expect(radios).to_have_count(3)
+
+        expected_options = [
+            ("low", 1),
+            ("other", 3),
+            ("high", 5),
+        ]
+
+        # Country Risk occupies the first three summary rows.
+        rows = self.risk_partial_summary_rows()
+
+        for selected_index, (value, score) in enumerate(
+            expected_options
+        ):
+            radio = radios.nth(selected_index)
+
+            assert radio.get_attribute("value") == value, (
+                f"Expected radio value '{value}'"
+            )
+
+            radio.check()
+            expect(radio).to_be_checked()
+
+            # Exactly one country radio must be checked.
+            checked_count = sum(
+                radios.nth(i).is_checked()
+                for i in range(3)
+            )
+
+            assert checked_count == 1, (
+                f"Expected one selected Country Risk radio, "
+                f"found {checked_count}"
+            )
+
+            # Verify other radios are unchecked.
+            for other_index in range(3):
+                if other_index != selected_index:
+                    expect(
+                        radios.nth(other_index)
+                    ).not_to_be_checked()
+
+            # Verify selected summary row and score.
+            selected_row = rows.nth(selected_index)
+
+            expect(selected_row).to_have_class(
+                re.compile(r"\bfont-semibold\b")
+            )
+
+            expect(
+                selected_row.locator("td").last
+            ).to_have_text(str(score), timeout=10000)
+
+            # Verify no other Country Risk row is highlighted.
+            for other_index in range(3):
+                if other_index != selected_index:
+                    expect(
+                        rows.nth(other_index)
+                    ).not_to_have_class(
+                        re.compile(r"\bfont-semibold\b")
+                    )
+
+            print(
+                f"PASS: Country Risk '{value}' selected, "
+                f"other options unchecked, summary score={score}"
+            )
+
+        # Restore Low Risk for consistency.
+        radios.nth(0).check()
+
+        expect(radios.nth(0)).to_be_checked()
+
+        expect(
+            rows.nth(0).locator("td").last
+        ).to_have_text("1", timeout=10000)
+
+        print(
+            "Excel 416: Country Risk radio "
+            "mutual exclusivity verified."
+        )
+
+
+
+    def risk_partial_441_inspect_update_notification(self):
+        update_button = self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+        complete_button = self.page.get_by_role(
+            "button",
+            name="Complete Onboarding",
+            exact=True
+        )
+
+        print("\n===== RISK ASSESSMENT ACTION DEBUG =====")
+
+        print("Current URL:", self.page.url)
+
+        print(
+            "Update Changes visible:",
+            update_button.is_visible()
+        )
+
+        print(
+            "Complete Onboarding visible:",
+            complete_button.is_visible()
+        )
+
+        if update_button.is_visible():
+            print(
+                "Risk Assessment is displaying "
+                "the Update Changes action."
+            )
+
+        elif complete_button.is_visible():
+            print(
+                "Risk Assessment is displaying "
+                "the Complete Onboarding action."
+            )
+
+        else:
+            raise AssertionError(
+                "Neither Update Changes nor "
+                "Complete Onboarding is visible."
+            )
+
+        print("========================================\n")
+
+
+
+    def risk_partial_441_verify_update_notification(self):
+        update_button = self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+        expect(update_button).to_be_visible(timeout=10000)
+        expect(update_button).to_be_enabled()
+
+        update_button.click()
+
+        # Ant Design notifications/messages, if used.
+        # The exact locator and text should be confirmed
+        # against the application's actual notification.
+        notification = self.page.locator(
+            ".ant-message-success, "
+            ".ant-notification-notice-success, "
+            "[role='alert']"
+        ).filter(
+            has_text=re.compile(
+                r"success|updated|saved",
+                re.IGNORECASE
+            )
+        ).first
+
+        expect(notification).to_be_visible(timeout=10000)
+
+        print(
+            "Excel 441: Update Changes clicked and "
+            "success notification verified:",
+            notification.inner_text()
+        )
+
+
+
+    def risk_441_open_existing_client_assessment(self):
+        # Navigate to Profiles.
+        profiles_link = self.page.get_by_role(
+            "link",
+            name=re.compile(r"Profiles", re.IGNORECASE)
+        )
+
+        expect(profiles_link).to_be_visible()
+        profiles_link.click()
+
+        # Open All Files.
+        all_files = self.page.get_by_text(
+            "All Files",
+            exact=True
+        )
+
+        expect(all_files).to_be_visible(timeout=10000)
+        all_files.click()
+
+        # Open the first available client ID.
+        # Adjust this locator if the client IDs use
+        # buttons or another HTML structure.
+        client_link = self.page.locator(
+            "table tbody tr a"
+        ).first
+
+        expect(client_link).to_be_visible(timeout=10000)
+
+        print(
+            "Opening client:",
+            client_link.inner_text().strip()
+        )
+
+        client_link.click()
+
+        # Navigate to Risk Assessment.
+        risk_tab = self.page.get_by_text(
+            "Risk Assessment",
+            exact=True
+        ).first
+
+        expect(risk_tab).to_be_visible(timeout=10000)
+        risk_tab.click()
+
+        # Verify this is the existing-client editing state.
+        update_button = self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+        expect(update_button).to_be_visible(timeout=10000)
+
+        print(
+            "Existing client Risk Assessment opened. "
+            "Update Changes button is visible."
+        )
+
+
+    def risk_441_verify_update_notification(self):
+        update_button = self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+        expect(update_button).to_be_visible(timeout=10000)
+        expect(update_button).to_be_enabled()
+
+        # Identify the notification containers.
+        notification_selector = (
+            ".ant-message-notice, "
+            ".ant-notification-notice, "
+            "[data-sonner-toast], "
+            "[role='alert'], "
+            "[role='status']"
+        )
+
+        # Capture existing notifications before clicking.
+        existing_messages = self.page.locator(
+            notification_selector
+        ).all_inner_texts()
+
+        print("Notifications before update:", existing_messages)
+
+        # Click Update Changes.
+        update_button.click()
+
+        # Inspect notifications appearing after the action.
+        # Exclude the known unrelated login success message.
+        new_notification = self.page.locator(
+            notification_selector
+        ).filter(
+            has_text=re.compile(
+                r"updated|saved|changes.*success|"
+                r"successfully updated",
+                re.IGNORECASE
+            )
+        ).first
+
+        expect(new_notification).to_be_visible(timeout=10000)
+
+        message = new_notification.inner_text().strip()
+
+        assert "login" not in message.lower(), (
+            "Detected login notification instead of "
+            "Risk Assessment update notification."
+        )
+
+        print("\n===== EXCEL 441 RESULT =====")
+        print("Update Changes clicked successfully.")
+        print("Update notification:", message)
+        print("============================\n")
+
+
+    def risk_413_verify_active_tab_pink(self):
+        risk_label = self.page.get_by_text(
+            "Risk Assessment",
+            exact=True
+        ).first
+
+        expect(risk_label).to_be_visible(timeout=10000)
+
+        result = risk_label.evaluate("""
+            (element) => {
+                const canvas = document.createElement("canvas");
+                canvas.width = 1;
+                canvas.height = 1;
+                const ctx = canvas.getContext("2d");
+
+                function toRGBA(color) {
+                    ctx.clearRect(0, 0, 1, 1);
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0, 0, 1, 1);
+                    return Array.from(
+                        ctx.getImageData(0, 0, 1, 1).data
+                    );
+                }
+
+                const ancestors = [];
+                let node = element;
+
+                for (let i = 0; i < 5 && node; i++) {
+                    const style = getComputedStyle(node);
+
+                    ancestors.push({
+                        tag: node.tagName,
+                        className:
+                            typeof node.className === "string"
+                                ? node.className
+                                : "",
+                        background: toRGBA(
+                            style.backgroundColor
+                        ),
+                        textColor: toRGBA(style.color)
+                    });
+
+                    node = node.parentElement;
+                }
+
+                return ancestors;
+            }
+        """)
+
+        print("\\n===== EXCEL 413 TAB STYLING =====")
+
+        for item in result:
+            print(item)
+
+        print("================================\\n")
+
+        # Verify an ancestor of the label is active.
+        active = any(
+            "active" in item["className"].split()
+            for item in result
+        )
+
+        assert active, (
+            "Risk Assessment tab does not have "
+            "the active CSS class."
+        )
+
+        # Expected pink is approximately RGB(202, 53, 126).
+        expected_pink = (202, 53, 126)
+
+        def is_pink(rgba):
+            return (
+                rgba[3] >= 230
+                and all(
+                    abs(rgba[i] - expected_pink[i]) <= 30
+                    for i in range(3)
+                )
+            )
+
+        pink_found = any(
+            is_pink(item["background"])
+            for item in result
+        )
+
+        assert pink_found, (
+            "Active Risk Assessment tab does not "
+            "have the expected pink background. "
+            f"Computed styles: {result}"
+        )
+
+        # Check that the visible label text is white.
+        text_color = result[0]["textColor"]
+
+        assert all(
+            channel >= 235
+            for channel in text_color[:3]
+        ), (
+            "Risk Assessment tab text is not white. "
+            f"Actual RGBA: {text_color}"
+        )
+
+        print(
+            "Excel 413 PASSED: Risk Assessment tab "
+            "is active, pink, and has white text."
+        )
+
+
+    def risk_441_verify_completion_alert(self):
+        complete_button = self.page.get_by_role(
+            "button",
+            name="Complete Onboarding",
+            exact=True
+        )
+
+        update_button = self.page.get_by_role(
+            "button",
+            name="Update Changes",
+            exact=True
+        )
+
+        expect(complete_button).to_be_visible(timeout=10000)
+        expect(complete_button).to_be_enabled()
+
+        # Monitor notifications before clicking the button.
+        self.page.evaluate("""
+            () => {
+                const selector = [
+                    ".ant-message",
+                    ".ant-notification",
+                    "[data-sonner-toast]",
+                    "[role='alert']",
+                    "[role='status']"
+                ].join(",");
+
+                const readMessages = () =>
+                    [...document.querySelectorAll(selector)]
+                        .map(el =>
+                            (el.innerText || el.textContent || "").trim()
+                        )
+                        .filter(Boolean);
+
+                const existing = new Set(readMessages());
+
+                window.__risk441Messages = [];
+
+                if (window.__risk441Observer) {
+                    window.__risk441Observer.disconnect();
+                }
+
+                const capture = () => {
+                    for (const message of readMessages()) {
+                        if (
+                            !existing.has(message) &&
+                            !window.__risk441Messages.includes(message)
+                        ) {
+                            window.__risk441Messages.push(message);
+                        }
+                    }
+                };
+
+                window.__risk441Observer =
+                    new MutationObserver(capture);
+
+                window.__risk441Observer.observe(
+                    document.body,
+                    {
+                        childList: true,
+                        subtree: true,
+                        characterData: true
+                    }
+                );
+            }
+        """)
+
+        # Complete onboarding.
+        complete_button.click()
+
+        # Verify the button changes to Update Changes.
+        expect(update_button).to_be_visible(timeout=15000)
+
+        # Allow notification updates to be captured.
+        self.page.wait_for_timeout(1500)
+
+        messages = self.page.evaluate("""
+            () => {
+                window.__risk441Observer?.disconnect();
+                return window.__risk441Messages || [];
+            }
+        """)
+
+        print("\n===== EXCEL 441 COMPLETION DEBUG =====")
+        print("Complete Onboarding clicked.")
+        print("Update Changes button is visible.")
+        print("Captured notifications:", messages)
+        print("======================================\n")
+
+        # Accept completion-related success wording only.
+        completion_messages = [
+            message for message in messages
+            if re.search(
+                r"(risk assessment|onboarding).*complet"
+                r"|complet.*(success|risk assessment|onboarding)",
+                message,
+                re.IGNORECASE
+            )
+        ]
+
+        assert completion_messages, (
+            "Onboarding button changed to Update Changes, "
+            "but no completion notification was captured. "
+            f"Captured messages: {messages}"
+        )
+
+        print(
+            "Excel 441 PASSED:",
+            completion_messages[0]
+        )
+
+
+    # Excel 432–436 — Selected summary attributes are pink
+    def risk_verify_five_selected_attributes_pink(self):
+        rows = self.risk_partial_summary_rows()
+        offset = 0
+
+        for factor_name, group_name, scores in self.RISK_PARTIAL_GROUPS:
+            factor_rows = [
+                rows.nth(offset + i)
+                for i in range(len(scores))
+            ]
+
+            selected_rows = [
+                row for row in factor_rows
+                if "font-semibold" in (
+                    row.get_attribute("class") or ""
+                ).split()
+            ]
+
+            assert len(selected_rows) == 1, (
+                f"{factor_name}: expected one highlighted "
+                f"summary row, found {len(selected_rows)}"
+            )
+
+            row = selected_rows[0]
+            cells = row.locator("td")
+
+            attribute_cell = cells.nth(
+                1 if cells.count() == 3 else 0
+            )
+
+            pink_dot = attribute_cell.locator(
+                "span[style*='background-color']"
+            ).first
+
+            expect(pink_dot).to_be_visible()
+
+            colors = attribute_cell.evaluate("""
+                (cell) => {
+                    const dot = cell.querySelector(
+                        "span[style*='background-color']"
+                    );
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = 1;
+                    canvas.height = 1;
+
+                    const ctx = canvas.getContext("2d");
+
+                    function rgba(color) {
+                        ctx.clearRect(0, 0, 1, 1);
+                        ctx.fillStyle = color;
+                        ctx.fillRect(0, 0, 1, 1);
+
+                        return Array.from(
+                            ctx.getImageData(0, 0, 1, 1).data
+                        );
+                    }
+
+                    return {
+                        attribute: cell.innerText.trim(),
+                        background: rgba(
+                            getComputedStyle(cell).backgroundColor
+                        ),
+                        indicator: rgba(
+                            getComputedStyle(dot).backgroundColor
+                        )
+                    };
+                }
+            """)
+
+            def is_pink(color):
+                expected = (202, 53, 128)
+
+                return (
+                    color[3] >= 20
+                    and all(
+                        abs(color[i] - expected[i]) <= 35
+                        for i in range(3)
+                    )
+                )
+
+            assert is_pink(colors["background"]), (
+                f"{factor_name}: selected attribute "
+                f"background is not pink: {colors}"
+            )
+
+            assert is_pink(colors["indicator"]), (
+                f"{factor_name}: selected indicator "
+                f"is not pink: {colors}"
+            )
+
+            print(
+                f"PASS: {factor_name} | "
+                f"{colors['attribute']} | "
+                f"background={colors['background']}"
+            )
+
+            offset += len(scores)
+
+        print(
+            "Excel 432–436 PASSED: "
+            "all five selected attributes are pink."
+        )
+
+    # Excel 416 — Complete Country Risk options
+    def risk_416_verify_complete_country_options(self):
+        group = self.risk_group(
+            "Country / Jurisdiction Risk"
+        )
+
+        options = group.locator(
+            "label.ant-radio-wrapper"
+        )
+
+        expect(options).to_have_count(3)
+
+        expected_descriptions = [
+            [
+                "Low risk countries per Basel AML Index",
+                "3.33 or lower"
+            ],
+            [
+                "Other countries and jurisdictions"
+            ],
+            [
+                "High risk countries as per Basel AML Index",
+                "6.67 or higher",
+                "Transparency International Corruption Index",
+                "NCCT countries and jurisdictions",
+                "Countries subject to sanctions",
+                "FATF Grey Listed"
+            ]
+        ]
+
+        radios = group.locator("input[type='radio']")
+        expect(radios).to_have_count(3)
+
+        original_index = next(
+            (i for i in range(3) if radios.nth(i).is_checked()),
+            None
+        )
+
+        assert original_index is not None, (
+            "No Country Risk option is initially selected."
+        )
+
+        for index, descriptions in enumerate(
+            expected_descriptions
+        ):
+            option = options.nth(index)
+
+            for description in descriptions:
+                expect(option).to_contain_text(description)
+
+            radios.nth(index).check()
+            expect(radios.nth(index)).to_be_checked()
+
+            checked_count = sum(
+                radios.nth(i).is_checked()
+                for i in range(3)
+            )
+
+            assert checked_count == 1, (
+                f"Country option {index}: "
+                f"expected one checked radio, got {checked_count}"
+            )
+
+            print(
+                f"PASS: Country option {index + 1}, "
+                "descriptions and exclusivity verified."
+            )
+
+        radios.nth(original_index).check()
+
+        print(
+            "Excel 416 PASSED: all Country Risk "
+            "descriptions and radio exclusivity verified."
+        )
+
+    # Excel 437 — Static risk-score weights
+    def risk_437_verify_option_score_weights(self):
+        rows = self.risk_partial_summary_rows()
+        offset = 0
+
+        for factor_name, group_name, scores in self.RISK_PARTIAL_GROUPS:
+            for index, expected_score in enumerate(scores):
+                row = rows.nth(offset + index)
+
+                expect(
+                    row.locator("td").last
+                ).to_have_text(str(expected_score))
+
+                print(
+                    f"PASS: {factor_name}, "
+                    f"option {index + 1}, "
+                    f"score={expected_score}"
+                )
+
+            offset += len(scores)
+
+        expect(rows.last.locator("td").first).to_have_text(
+            "Total Score"
+        )
+
+        print(
+            "Excel 437 PASSED: all option score "
+            "weights and Total Score row verified."
+        )
+
+
+
+
+    def risk_450_verify_classification_for_all_levels(self):
+        scenarios = [
+            {
+                "name": "Low",
+                "selections": ["low", "nonPep", "residence",
+                               "bankTransfer", "noHits"],
+                "expected_total": 5,
+            },
+            {
+                "name": "Medium",
+                "selections": ["other", "nonPep", "nonResidence",
+                               "bankTransfer", "noHits"],
+                "expected_total": 9,
+            },
+            {
+                "name": "High",
+                "selections": ["high", "pep", "nonResidence",
+                               "cash", "confirmed"],
+                "expected_total": 19,
+            },
+        ]
+
+        groups = [
+            "Country / Jurisdiction Risk",
+            "Politically Exposed Person (PEP) Status",
+            "Australian Residential Status",
+            "Transfer of Funds",
+            "Adverse Media",
+        ]
+
+        rows = self.risk_partial_summary_rows()
+
+        for scenario in scenarios:
+            print(
+                f"\n===== EXCEL 450: {scenario['name']} ====="
+            )
+
+            # Select the required options in each risk group.
+            for group_name, value in zip(
+                groups, scenario["selections"]
+            ):
+                group = self.risk_group(group_name)
+
+                radio = group.locator(
+                    f"input[type='radio'][value='{value}']"
+                )
+
+                expect(radio).to_have_count(1)
+                radio.check()
+                expect(radio).to_be_checked()
+
+            # Wait for the UI to update its total.
+            total_cell = rows.last.locator("td").last
+
+            expect(total_cell).to_have_text(
+                str(scenario["expected_total"]),
+                timeout=10000
+            )
+
+            actual_total = int(
+                total_cell.inner_text().strip()
+            )
+
+            # Calculate expected classification independently.
+            expected_classification = (
+                "Low" if actual_total <= 5
+                else "Medium" if actual_total <= 15
+                else "High"
+            )
+
+            assert expected_classification == scenario["name"], (
+                f"Expected {scenario['name']}, "
+                f"calculated {expected_classification}"
+            )
+
+            # Existing helper returns classification as a string.
+            actual_classification = self.risk_classification()
+
+            assert actual_classification == scenario["name"], (
+                f"Score {actual_total}: "
+                f"expected classification {scenario['name']}, "
+                f"got {actual_classification}"
+            )
+
+            print(f"Expected score: {scenario['expected_total']}")
+            print(f"Actual score: {actual_total}")
+            print(
+                f"Classification: {actual_classification}"
+            )
+            print(f"PASS: {scenario['name']} classification")
+
+        print(
+            "\nExcel 450 PASSED: Low, Medium, and High "
+            "risk classifications verified."
+        )
+
+
+
+    # =========================================================
+    # KYC - REMAINING 10 PARTIAL EXCEL SCENARIOS
+    # =========================================================
+
+    @staticmethod
+    def _kyc_is_pink(rgba):
+        """Match the application's observed primary pink."""
+        if len(rgba) != 4 or rgba[3] < 20:
+            return False
+
+        r, g, b, _ = rgba
+        return (
+            175 <= r <= 230
+            and 25 <= g <= 100
+            and 90 <= b <= 175
+        )
+
+    @staticmethod
+    def _kyc_computed_rgba(locator):
+        """Resolve CSS colors, including variables and opacity."""
+        return locator.evaluate("""
+            el => {
+                const c = document.createElement('canvas');
+                c.width = c.height = 1;
+
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = getComputedStyle(el).backgroundColor;
+                ctx.fillRect(0, 0, 1, 1);
+
+                return Array.from(
+                    ctx.getImageData(0, 0, 1, 1).data
+                );
+            }
+        """)
+
+    # ---------------------------------------------------------
+    # EXCEL 350 - ACTIVE KYC TAB IS PINK
+    # ---------------------------------------------------------
+
+    def kyc_47_verify_active_tab_pink(self):
+        tab = self.page.locator(
+            ".tab-z-option.active"
+        ).filter(
+            has=self.page.get_by_text(
+                "KYC Form",
+                exact=True
+            )
+        )
+
+        expect(tab).to_have_count(1)
+        expect(tab).to_be_visible()
+
+        rgba = self._kyc_computed_rgba(tab)
+
+        r, g, b, alpha = rgba
+
+        # Pink includes both the primary saturated shade
+        # and the lighter pink used by the KYC tab.
+        is_pink = (
+            alpha >= 20
+            and r > g
+            and r > b
+            and b > g
+            and (r - g) >= 20
+        )
+
+        assert is_pink, (
+            f"Excel 350: Active KYC tab is not pink. "
+            f"Actual RGBA: {rgba}"
+        )
+
+        print(
+            f"Excel 350 PASSED: "
+            f"KYC active tab background = {rgba}"
+        )
+
+    # ---------------------------------------------------------
+    # EXCEL 354 - SECTION 01 PINK RECTANGLE
+    # ---------------------------------------------------------
+
+    def kyc_48_verify_section_01_pink(self):
+        heading = self.kyc_form.locator(
+            ".section-header h6"
+        ).filter(
+            has_text=re.compile(
+                r"^\s*SECTION 01 - "
+                r"KYC PROFILE OF THE CLIENT\s*$"
+            )
+        )
+
+        expect(heading).to_have_count(1)
+        expect(heading).to_be_visible()
+
+        container = heading.locator("xpath=..")
+
+        expect(container).to_be_visible()
+
+        rgba = self._kyc_computed_rgba(container)
+
+        assert self._kyc_is_pink(rgba), (
+            f"Excel 354: Section 01 "
+            f"rectangle is not pink: {rgba}"
+        )
+
+        print(
+            f"Excel 354 PASSED: "
+            f"Section 01 pink rectangle {rgba}"
+        )
+
+    # ---------------------------------------------------------
+    # EXCEL 359, 379, 386, 399, 400, 403
+    # VERIFY SIX REQUIRED LABELS
+    # ---------------------------------------------------------
+
+    def kyc_49_verify_six_exact_labels(self):
+        requirements = {
+            359: "Gender",
+            379: "Nationality",
+            386: "Passport",
+            399: "Address",
+            400: "Home Country or Permanent Address",
+            403: "Current Residency Address",
+        }
+
+        for excel_id, expected in requirements.items():
+            label = self.kyc_form.locator(
+                "label"
+            ).filter(
+                has_text=re.compile(
+                    r"^\s*"
+                    + re.escape(expected)
+                    + r"\s*$"
+                )
+            )
+
+            expect(label).to_have_count(1)
+            expect(label).to_be_visible()
+
+            print(
+                f"Excel {excel_id} PASSED: {expected}"
+            )
+
+    # ---------------------------------------------------------
+    # EXCEL 410 - ALL 16 SOURCE OF WEALTH LABELS
+    # ---------------------------------------------------------
+
+    def kyc_50_verify_all_16_wealth_labels(self):
+        section = self.kyc_form.locator(
+            ".header-box"
+        ).filter(
+            has_text="Source of Wealth"
+        )
+
+        expect(section).to_be_visible()
+
+        options = section.locator(
+            "label.ant-checkbox-wrapper"
+        )
+
+        expect(options).to_have_count(16)
+
+        actual = [
+            text.strip()
+            for text in options.locator(
+                ".ant-checkbox-label"
+            ).all_text_contents()
+        ]
+
+        expected = list(self.KYC_WEALTH_OPTIONS)
+
+        assert actual == expected, (
+            "Excel 410: Source of Wealth "
+            "labels or order differ.\n"
+            f"Expected: {expected}\n"
+            f"Actual: {actual}"
+        )
+
+        values = options.locator(
+            'input[type="checkbox"]'
+        ).evaluate_all(
+            "els => els.map(el => el.value)"
+        )
+
+        assert values == expected, (
+            "Excel 410: Checkbox values "
+            f"differ from labels: {values}"
+        )
+
+        print(
+            "Excel 410 PASSED: "
+            "all 16 labels and checkbox values match."
+        )
+
+    # ---------------------------------------------------------
+    # EXCEL 412 - SAVE KYC AND VERIFY DATA PERSISTENCE
+    # ---------------------------------------------------------
+
+    def kyc_51_verify_save_persistence(self):
+        from uuid import uuid4
+
+        suffix = uuid4().hex[:8]
+
+        values = {
+            "full_name": f"Automation KYC {suffix}",
+            "contact": "+94771234567",
+            "email": f"kyc.{suffix}@example.com",
+            "document_number": f"DOC{suffix.upper()}",
+            "passport_number": f"P{suffix.upper()}",
+        }
+
+        addresses = (
+            f"Home Address {suffix}, Colombo",
+            f"Current Address {suffix}, Negombo",
+        )
+
+        # Fill text fields.
+        for field, value in values.items():
+            self.kyc_fill_text(field, value)
+
+        # Fill address fields.
+        for i, value in enumerate(addresses):
+            self.kyc_fill_address(i, value)
+
+        # Select dropdown values.
+        self.kyc_choose_first_dropdown_option(
+            "Gender"
+        )
+
+        self.kyc_choose_first_dropdown_option(
+            "Country of Residency",
+            search="Sri"
+        )
+
+        self.kyc_choose_first_dropdown_option(
+            "Nationality 1",
+            scope=self.kyc_nationality_box,
+            search="Sri"
+        )
+
+        self.kyc_choose_first_dropdown_option(
+            "Occupation"
+        )
+
+        # Select two Source of Wealth options.
+        self.kyc_set_wealth("Savings")
+        self.kyc_set_wealth("Inheritance")
+
+        # Capture selected dropdown values.
+        dropdowns = (
+            ("Gender", None),
+            ("Country of Residency", None),
+            ("Nationality 1", self.kyc_nationality_box),
+            ("Occupation", None),
+        )
+
+        selected = {}
+
+        for label, scope in dropdowns:
+            select = self.kyc_select_for_label(
+                label,
+                scope
+            )
+
+            item = select.locator(
+                ".ant-select-selection-item"
+            ).first
+
+            expect(item).to_be_visible()
+
+            selected[label] = item.inner_text().strip()
+
+            assert selected[label], (
+                f"{label} has no selected value "
+                "before saving"
+            )
+
+        # Save the KYC form.
+        self.kyc_click_save()
+
+        # Reload to verify data was actually persisted.
+        self.page.wait_for_timeout(1500)
+
+        self.page.reload(
+            wait_until="domcontentloaded"
+        )
+
+        self.open_kyc_form()
+        self.kyc_assert_loaded()
+
+        # Verify text field persistence.
+        for field, expected in values.items():
+            expect(
+                self.kyc_text_input(field)
+            ).to_have_value(
+                expected,
+                timeout=15000
+            )
+
+            print(f"Persisted: {field}")
+
+        # Verify address persistence.
+        for i, expected in enumerate(addresses):
+            expect(
+                self.kyc_address(i)
+            ).to_have_value(
+                expected,
+                timeout=15000
+            )
+
+            print(
+                f"Persisted: address {i + 1}"
+            )
+
+        # Verify dropdown persistence.
+        for label, _ in dropdowns:
+            scope = (
+                self.kyc_nationality_box
+                if label == "Nationality 1"
+                else None
+            )
+
+            item = self.kyc_select_for_label(
+                label,
+                scope
+            ).locator(
+                ".ant-select-selection-item"
+            ).first
+
+            expect(item).to_have_text(
+                selected[label],
+                timeout=15000
+            )
+
+            print(
+                f"Persisted: {label} = "
+                f"{selected[label]}"
+            )
+
+        # Verify Source of Wealth persistence.
+        for wealth in (
+            "Savings",
+            "Inheritance"
+        ):
+            expect(
+                self.kyc_wealth_input(wealth)
+            ).to_be_checked(
+                timeout=15000
+            )
+
+            print(
+                f"Persisted: Source of Wealth - {wealth}"
+            )
+
+        print(
+            "Excel 412 PASSED: "
+            "saved KYC values survived a page reload."
+        )
+
+
+
+    def kyc_51_check_address_blur_and_save(self):
+        from uuid import uuid4
+
+        marker = f"KYC TEST {uuid4().hex[:8]}"
+
+        address = self.kyc_address(0)
+
+        # Enter the address.
+        address.fill(marker)
+
+        expect(address).to_have_value(marker)
+
+        print("After typing:", repr(address.input_value()))
+
+        # Trigger blur/change handling.
+        address.press("Tab")
+
+        expect(address).to_have_value(marker)
+
+        print("After blur:", repr(address.input_value()))
+
+        # Capture the Save API request.
+        with self.page.expect_response(
+            lambda response: (
+                response.request.method == "PUT"
+                and "/kyc-form" in response.url
+            ),
+            timeout=30000
+        ) as response_info:
+            self.kyc_click_save()
+
+        response = response_info.value
+
+        body = response.request.post_data or ""
+
+        print("HTTP status:", response.status)
+        print("Edited address sent:", marker in body)
+
+        actual = self.kyc_address(0).input_value()
+
+        print("Address after Save:", repr(actual))
+
+        assert marker in body, (
+            "BUG: Edited KYC address is missing "
+            "from the Save API request payload."
+        )
+
+        assert actual == marker, (
+            "BUG: KYC address changed unexpectedly "
+            "after Save."
+        )
+
+        print("Excel 412 PASSED")
