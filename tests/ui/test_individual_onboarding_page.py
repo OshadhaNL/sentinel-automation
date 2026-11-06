@@ -10,6 +10,8 @@ from playwright.sync_api import Page, expect
 from pages.loginPage import LoginPage
 from pages.mainOnboardingPage import MainOnboardingPage
 from pages.individualOnboardingPage import IndividualOnboardingPage
+from pages.clientReusePage import ClientReusePage
+from pages.clientReusePolicy import REUSE_VERIFIED_TESTS
 
 
 
@@ -17,72 +19,112 @@ from pages.individualOnboardingPage import IndividualOnboardingPage
 class TestIndividualOnboarding:
 
     @pytest.fixture(autouse=True)
-    def setup_individual(self, page: Page, base_url: str):
+    def setup_individual(self, page: Page, base_url: str, request):
+        """Fresh test browser page; reuse only the identified verified client record.
 
+        The original Verification/review and all state-mutating tests still create
+        independent clients. Only the explicit policy allowlist shares a record.
+        TEST_REUSE_VERIFIED=0 restores the old per-test setup for comparison.
+        """
         self.page = page
+        self._shared_verified = False
+        self._reference_id = None
 
         email = os.getenv("TEST_EMAIL")
         password = os.getenv("TEST_PASSWORD")
-
         assert email, "TEST_EMAIL is not configured"
         assert password, "TEST_PASSWORD is not configured"
 
-        # Step 1: Login
         login = LoginPage(page)
         login.open(base_url)
         login.enter_email(email)
         login.enter_password(password)
         login.click_login()
-
         expect(page).to_have_url(
-            re.compile(r".*/nolimit/app/home/?$")
+            re.compile(r".*/nolimit/app/home/?$"), timeout=45000
         )
 
-        # Step 2: Open main Onboarding
+        should_reuse = (
+            os.getenv("TEST_REUSE_VERIFIED", "1") != "0"
+            and request.node.originalname in REUSE_VERIFIED_TESTS
+        )
+        if should_reuse:
+            # The pytest Config object is worker-local with pytest-xdist. Thus
+            # each worker creates/uses a separate record by default.
+            worker_cache = getattr(
+                request.config, "_sentinel_verified_client_id", None
+            )
+            # Require explicit opt-in to reuse a client from a previous run.
+            # TEST_REUSE_CLIENT_ID may still be set from the Phase 1 POC.
+            use_existing = os.getenv("TEST_REUSE_USE_EXISTING", "0") == "1"
+            seed_id = (
+                os.getenv("TEST_REUSE_CLIENT_ID", "").strip()
+                if use_existing else ""
+            )
+            # A seeded client is safe with pytest-xdist only when the controller
+            # uses --dist=loadfile, so this whole test module stays on one worker.
+            # That condition is validated once by the controller in conftest.py.
+            # Do not query request.config.getoption("dist") here: xdist workers
+            # do not reliably retain the controller's scheduling mode.
+            client_id = worker_cache or seed_id
+            if client_id:
+                resume = ClientReusePage(page)
+                resume.reopen_pending_individual(client_id)
+                self.individual = IndividualOnboardingPage(page)
+                self.individual.verify_page_loaded()
+                actual = self.individual.risk_get_current_client_id()
+                assert actual == client_id, (
+                    f"Opened wrong reusable individual: {actual} != {client_id}"
+                )
+                self._shared_verified = True
+                self._reference_id = client_id
+                setattr(request.config, "_sentinel_verified_client_id", client_id)
+                print(f"[reuse] Existing verified client: {client_id}")
+                return
+
+        # Existing fresh-client workflow remains intact for nonreusable cases
+        # and for first-time provisioning of the shared verified client.
         page.get_by_role(
             "link", name="Onboarding", exact=False
         ).click()
-
         main = MainOnboardingPage(page)
-
         expect(main.heading).to_be_visible()
         main.open_new()
-
-        # Step 3: Create unique individual client
-        client_name = (
-            "Automation Individual "
-            + uuid.uuid4().hex[:12]
-        )
-
-        main.open_consent(
-            "individual",
-            client_name,
-            role="Seller",
-        )
-
-        # Step 4: Accept consent
+        client_name = "Automation Individual " + uuid.uuid4().hex[:12]
+        main.open_consent("individual", client_name, role="Seller")
         main.consent_checkbox().check()
-
         expect(main.consent_agree()).to_be_enabled()
         main.consent_agree().click()
-
-        # Step 5: Initialize individual page
         self.individual = IndividualOnboardingPage(page)
         self.individual.verify_page_loaded()
 
+        if should_reuse:
+            # This is run ONCE per process/xdist worker, not once per test.
+            client_id = self.individual.risk_get_current_client_id()
+            documents = request.getfixturevalue("document_files")
+            self.prepare_documents_step(documents)
+            assert self.individual.risk_get_current_client_id() == client_id
+            setattr(request.config, "_sentinel_verified_client_id", client_id)
+            self._shared_verified = True
+            self._reference_id = client_id
+            print(f"[reuse] Prepared verified client: {client_id}")
+        else:
+            print(f"[isolation] Fresh client for {request.node.name}")
+
     def prepare_documents_step(self, document_files):
+        # Reused clients have already completed photo + review submission.
+        # Only navigate; never repeat selfie capture or submit again.
+        if self._shared_verified:
+            self.individual.open_tab("Documents")
+            self.individual.verify_documents_page_loaded()
+            return
+
         self.prepare_review_extracted_information(document_files)
-
         self.individual.select_first_review_dropdown_option("Gender")
-
         self.individual.click_review_save_confirm()
-
         self.individual.verify_review_submission_successful()
-
         self.individual.click_finish_and_view_submitted_documents()
-
         self.individual.verify_navigation_after_finish()
-
 
     def test_individual_page_header(self):
         self.individual.verify_page_header()
@@ -1786,7 +1828,11 @@ class TestIndividualOnboarding:
 
     @pytest.fixture
     def kyc_verification_complete(self, document_files):
-        """Complete Verification and review before opening KYC directly."""
+        """Prepare KYC; skip expensive Verification for the shared client."""
+        if self._shared_verified:
+            assert self._reference_id == self.individual.risk_get_current_client_id()
+            return
+
         self.prepare_review_extracted_information(document_files)
         self.individual.select_first_review_dropdown_option("Gender")
         self.individual.click_review_save_confirm()

@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title id="head-title">shared_client_regression.html</title>
+      <style type="text/css">body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  vertical-align: top;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+#environment ul {
+  margin: 0;
+  padding: 0 20px;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+.col-links__extra {
+  margin-right: 3px;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.logwrapper {
+  max-height: 230px;
+  overflow-y: scroll;
+  background-color: #e6e6e6;
+}
+.logwrapper.expanded {
+  max-height: none;
+}
+.logwrapper.expanded .logexpander:after {
+  content: "collapse [-]";
+}
+.logwrapper .logexpander {
+  z-index: 1;
+  position: sticky;
+  top: 10px;
+  width: max-content;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 5px 7px;
+  margin: 10px 0 10px calc(100% - 80px);
+  cursor: pointer;
+  background-color: #e6e6e6;
+}
+.logwrapper .logexpander:after {
+  content: "expand [+]";
+}
+.logwrapper .logexpander:hover {
+  color: #000;
+  border-color: #000;
+}
+.logwrapper .log {
+  min-height: 40px;
+  position: relative;
+  top: -50px;
+  height: calc(100% + 50px);
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  padding: 5px;
+  padding-right: 80px;
+  white-space: pre-wrap;
+}
+
+div.media {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin: 0 5px;
+  overflow: hidden;
+  width: 320px;
+}
+
+.media-container {
+  display: grid;
+  grid-template-columns: 25px auto 25px;
+  align-items: center;
+  flex: 1 1;
+  overflow: hidden;
+  height: 200px;
+}
+
+.media-container--fullscreen {
+  grid-template-columns: 0px auto 0px;
+}
+
+.media-container__nav--right,
+.media-container__nav--left {
+  text-align: center;
+  cursor: pointer;
+}
+
+.media-container__viewport {
+  cursor: pointer;
+  text-align: center;
+  height: inherit;
+}
+.media-container__viewport img,
+.media-container__viewport video {
+  object-fit: cover;
+  width: 100%;
+  max-height: 100%;
+}
+
+.media__name,
+.media__counter {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  flex: 0 0 25px;
+  align-items: center;
+}
+
+.collapsible td:not(.col-links) {
+  cursor: pointer;
+}
+.collapsible td:not(.col-links):hover::after {
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.col-result {
+  width: 130px;
+}
+.col-result:hover::after {
+  content: " (hide details)";
+}
+
+.col-result.collapsed:hover::after {
+  content: " (show details)";
+}
+
+#environment-header h2:hover::after {
+  content: " (hide details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#environment-header.collapsed h2:hover::after {
+  content: " (show details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+.sortable.desc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: -12.5px;
+  border: 10px solid #4caf50;
+  border-bottom: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.sortable.asc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: 12.5px;
+  border: 10px solid #4caf50;
+  border-top: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.hidden, .summary__reload__button.hidden {
+  display: none;
+}
+
+.summary__data {
+  flex: 0 0 550px;
+}
+.summary__reload {
+  flex: 1 1;
+  display: flex;
+  justify-content: center;
+}
+.summary__reload__button {
+  flex: 0 0 300px;
+  display: flex;
+  color: white;
+  font-weight: bold;
+  background-color: #4caf50;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.summary__reload__button:hover {
+  background-color: #46a049;
+}
+.summary__spacer {
+  flex: 0 0 550px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+}
+
+.filters,
+.collapse {
+  display: flex;
+  align-items: center;
+}
+.filters button,
+.collapse button {
+  color: #999;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.filters button:hover,
+.collapse button:hover {
+  color: #ccc;
+}
+
+.filter__label {
+  margin-right: 10px;
+}
+
+      </style>
+    
+  </head>
+  <body>
+    <h1 id="title">shared_client_regression.html</h1>
+    <p>Report generated on 04-Nov-2026 at 12:42:46 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a>
+        v4.2.0</p>
+    <div id="environment-header">
+      <h2>Environment</h2>
+    </div>
+    <table id="environment"></table>
+    <!-- TEMPLATES -->
+      <template id="template_environment_row">
+      <tr>
+        <td></td>
+        <td></td>
+      </tr>
+    </template>
+    <template id="template_results-table__body--empty">
+      <tbody class="results-table-row">
+        <tr id="not-found-message">
+          <td colspan="4">No results found. Check the filters.</td>
+        </tr>
+      </tbody>
+    </template>
+    <template id="template_results-table__tbody">
+      <tbody class="results-table-row">
+        <tr class="collapsible">
+        </tr>
+        <tr class="extras-row">
+          <td class="extra" colspan="4">
+            <div class="extraHTML"></div>
+            <div class="media">
+              <div class="media-container">
+                  <div class="media-container__nav--left">&lt;</div>
+                  <div class="media-container__viewport">
+                    <img src="" />
+                    <video controls>
+                      <source src="" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="media-container__nav--right">&gt;</div>
+                </div>
+                <div class="media__name"></div>
+                <div class="media__counter"></div>
+            </div>
+            <div class="logwrapper">
+              <div class="logexpander"></div>
+              <div class="log"></div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </template>
+    <!-- END TEMPLATES -->
+    <div class="summary">
+      <div class="summary__data">
+        <h2>Summary</h2>
+        <div class="additional-summary prefix">
+        </div>
+        <p class="run-count">172 tests took 00:29:15.</p>
+        <p class="filter">(Un)check the boxes to filter the results.</p>
+        <div class="summary__reload">
+          <div class="summary__reload__button hidden" onclick="location.reload()">
+            <div>There are still tests running. <br />Reload this page to get the latest results!</div>
+          </div>
+        </div>
+        <div class="summary__spacer"></div>
+        <div class="controls">
+          <div class="filters">
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="failed" >
+            <span class="failed">13 Failed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="passed" >
+            <span class="passed">159 Passed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="skipped" disabled>
+            <span class="skipped">0 Skipped,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xfailed" disabled>
+            <span class="xfailed">0 Expected failures,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xpassed" disabled>
+            <span class="xpassed">0 Unexpected passes,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="error" >
+            <span class="error">2 Errors,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="rerun" disabled>
+            <span class="rerun">0 Reruns</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="retried" disabled>
+            <span class="retried">0 Retried,</span>
+          </div>
+          <div class="collapse">
+            <button id="show_all_details">Show all details</button>&nbsp;/&nbsp;<button id="hide_all_details">Hide all details</button>
+          </div>
+        </div>
+      </div>
+      <div class="additional-summary summary">
+      </div>
+      <div class="additional-summary postfix">
+      </div>
+    </div>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable" data-column-type="result">Result</th>
+          <th class="sortable" data-column-type="testId">Test</th>
+          <th class="sortable" data-column-type="duration">Duration</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+    </table>
+  <footer>
+    <div id="data-container" data-jsonblob="{&#34;environment&#34;: {&#34;Python&#34;: &#34;3.13.16&#34;, &#34;Platform&#34;: &#34;Windows-11-10.0.26200-SP0&#34;, &#34;Packages&#34;: {&#34;pytest&#34;: &#34;9.1.1&#34;, &#34;pluggy&#34;: &#34;1.6.0&#34;}, &#34;Plugins&#34;: {&#34;html&#34;: &#34;4.2.0&#34;, &#34;metadata&#34;: &#34;3.1.1&#34;, &#34;playwright&#34;: &#34;0.10.0&#34;, &#34;xdist&#34;: &#34;3.8.0&#34;}}, &#34;tests&#34;: {&#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_step_navigation[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_step_navigation[chromium]&#34;, &#34;duration&#34;: &#34;00:00:14&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_step_navigation[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:14&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_page_elements[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_page_elements[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_page_elements[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_choose_file_buttons[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_choose_file_buttons[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_choose_file_buttons[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_button_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_button_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_button_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_documents_upload_inputs[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_documents_upload_inputs[chromium]&#34;, &#34;duration&#34;: &#34;00:00:36&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_documents_upload_inputs[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:36&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:1003: in test_inspect_documents_upload_inputs\n    print(label.locator(&amp;quot;xpath=..&amp;quot;).evaluate(&amp;quot;(element) =&amp;gt; element.outerHTML&amp;quot;))\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:11491: in evaluate\n    self._sync(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_locator.py:204: in evaluate\n    return await self._with_element(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_locator.py:123: in _with_element\n    handle = await self.element_handle(timeout=timeout)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv\\Lib\\site-packages\\playwright\\_impl\\_locator.py:334: in element_handle\n    handle = await self._frame.wait_for_selector(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:395: in wait_for_selector\n    await self._channel.send(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:636: in wrap_api_call\n    raise rewrite_error(error, f&amp;quot;{parsed_st[&amp;#x27;apiName&amp;#x27;]}: {error}&amp;quot;) from None\nE   playwright._impl._errors.TimeoutError: Locator.evaluate: Timeout 30000ms exceeded.\nE   Call log:\nE     - waiting for get_by_text(&amp;quot;Driver Licence&amp;quot;, exact=True).first.locator(&amp;quot;..&amp;quot;)\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_documents_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_documents_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:01:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_documents_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:01:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_uploaded_images_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_uploaded_images_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_driver_licence_uploaded_images_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_driver_licence_actions[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_driver_licence_actions[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_driver_licence_actions[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_front[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_front[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_front[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_back[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_back[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_view_driver_licence_back[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_front[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_front[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_front[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_back[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_back[chromium]&#34;, &#34;duration&#34;: &#34;00:00:17&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_download_driver_licence_back[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:17&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_upload_tab_active[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_upload_tab_active[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_upload_tab_active[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab_active[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab_active[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_verify_tab_active[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_cabinets_tab_active[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_cabinets_tab_active[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_cabinets_tab_active[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_switch_between_tabs[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_switch_between_tabs[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_switch_between_tabs[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_id_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_id_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_id_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_client_name_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_client_name_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_client_name_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_remaining_documents_and_screening[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_remaining_documents_and_screening[chromium]&#34;, &#34;duration&#34;: &#34;00:00:22&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_inspect_remaining_documents_and_screening[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:22&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_heading_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Error&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_heading_visible[chromium]::setup&#34;, &#34;duration&#34;: &#34;00:00:14&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Error&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_heading_visible[chromium]::setup&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:14&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:73: in setup_individual\n    resume.reopen_pending_individual(client_id)\npages\\clientReusePage.py:24: in reopen_pending_individual\n    self.return_to_onboarding()\npages\\mainOnboardingPage.py:335: in return_to_onboarding\n    expect(self.heading).to_be_visible()\nE   AssertionError: Locator expected to be visible\nE   Actual value: None\nE   Error: element(s) not found \nE   Call log:\nE     - Expect &amp;quot;to_be_visible&amp;quot; get_by_role(&amp;quot;heading&amp;quot;, name=&amp;quot;Onboarding&amp;quot;, exact=True) with timeout 5000ms\nE     - waiting for get_by_role(&amp;quot;heading&amp;quot;, name=&amp;quot;Onboarding&amp;quot;, exact=True)\nE   \nE   Aria snapshot:\nE   - navigation:\nE     - button &amp;quot;\uf0f3 99+&amp;quot;\nE     - button &amp;quot;\uf185&amp;quot;\nE     - button &amp;quot;\uf1ab&amp;quot;\nE     - heading &amp;quot;OW&amp;quot; [level=4]\nE     - heading &amp;quot;Oshadha Weerakon&amp;quot; [level=6]\nE     - paragraph: oshadha@northlark.com\nE     - button &amp;quot;\uf2f5&amp;quot;\nE   - main\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_table_headers[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_table_headers[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_table_headers[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_data_state[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_data_state[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_document_cabinets_data_state[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_matches_url[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_matches_url[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_reference_matches_url[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_opens_verify[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_opens_verify[chromium]&#34;, &#34;duration&#34;: &#34;00:00:35&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_documents_next_opens_verify[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:35&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:1294: in test_documents_next_opens_verify\n    self.individual.verify_documents_next_opens_verify()\npages\\individualOnboardingPage.py:1809: in verify_documents_next_opens_verify\n    expect(self.page).to_have_url(\nE   AssertionError: Page URL expected to be &amp;#x27;re.compile(&amp;#x27;[?&amp;amp;]step=documents(?:&amp;amp;|$).*[?&amp;amp;]type=verify(?:&amp;amp;|$)&amp;#x27;)&amp;#x27;\nE   Actual value: https://sentinel-austrac-qa.northlark.com/nolimit/app/onboarding/individual/process?client=SENTINEL095931613F99686&amp;amp;step=documents&amp;amp;type=verify \nE   Call log:\nE     - Expect &amp;quot;to_have_url&amp;quot; with timeout 30000ms\nE       62 \u00d7 locator resolved to &amp;lt;html lang=&amp;quot;en&amp;quot; dir=&amp;quot;ltr&amp;quot;&amp;gt;\u2026&amp;lt;/html&amp;gt;\nE          - unexpected value &amp;quot;https://sentinel-austrac-qa.northlark.com/nolimit/app/onboarding/individual/process?client=SENTINEL095931613F99686&amp;amp;step=documents&amp;amp;type=verify&amp;quot;\nE   \nE   Aria snapshot:\nE   - complementary:\nE     - img &amp;quot;SENTINEL&amp;quot;\nE     - text: SENTINEL\nE     - button &amp;quot;\uf323&amp;quot;\nE     - list:\nE       - listitem:\nE         - link &amp;quot;\uf80a Home&amp;quot;:\nE           - /url: /nolimit/app/home\nE       - listitem:\nE         - link &amp;quot;\uf200 Dashboard&amp;quot;:\nE           - /url: /nolimit/app/dashboard\nE       - listitem:\nE         - link &amp;quot;\uf65e Onboarding&amp;quot;:\nE           - /url: /nolimit/app/onboarding\nE       - listitem:\nE         - link &amp;quot;\uf0c0 Profiles&amp;quot;:\nE           - /url: /nolimit/app/profiles\nE       - listitem:\nE         - link &amp;quot;\uf362 Transactions&amp;quot;:\nE           - /url: /nolimit/app/transaction-activities\nE       - listitem:\nE         - link &amp;quot;\uf57d Screening&amp;quot;:\nE           - /url: /nolimit/app/screening\nE       - listitem:\nE         - button &amp;quot;\uf013 Settings \uf078&amp;quot;\nE     - paragraph: Powered by NorthLark\nE   - navigation:\nE     - button &amp;quot;\uf234&amp;quot;\nE     - button &amp;quot;\uf0f3 99+&amp;quot;\nE     - button &amp;quot;\uf185&amp;quot;\nE     - button &amp;quot;\uf1ab&amp;quot;\nE     - heading &amp;quot;OW&amp;quot; [level=4]\nE     - heading &amp;quot;Oshadha Weerakon&amp;quot; [level=6]\nE     - paragraph: oshadha@northlark.com\nE     - button &amp;quot;\uf2f5&amp;quot;\nE   - main:\nE     - button &amp;quot;\uf060 Back&amp;quot;\nE     - heading &amp;quot;Individual Onboarding&amp;quot; [level=1]\nE     - paragraph: Uploaded documents\nE     - text: \uf832 Verification \uf07c Documents \uf57d Screening \uf4fc KYC Form \uf2f7 Risk Assessment \uf0ee Upload \uf316 Verify \uf802 Cabinets\nE     - &amp;#x27;heading &amp;quot;Ref ID: SENTINEL095931613F99686&amp;quot; [level=4]&amp;#x27;\nE     - &amp;#x27;heading &amp;quot;Client Name: Automation Reuse POC 38f949a3380b&amp;quot; [level=4]&amp;#x27;\nE     - text: Consent Letter consent-letter-SENTINEL09... \uf1da Expiry date\nE     - button &amp;quot;\uf0c9&amp;quot;\nE     - heading &amp;quot;consent-letter-SENTINEL095931613F99686.pdf&amp;quot; [level=6]\nE     - paragraph: 2 KB\nE     - button &amp;quot;\uf2f9&amp;quot;\nE     - button &amp;quot;\uf06e&amp;quot;\nE     - button &amp;quot;\uf33d&amp;quot;\nE     - button &amp;quot;\uf2ed&amp;quot;\nE     - button &amp;quot;Modify&amp;quot;\nE     - text: Driver Licence doc-front.jpg \uf1da Expiry date\nE     - button &amp;quot;\uf0c9&amp;quot;\nE     - heading &amp;quot;doc-front.jpg&amp;quot; [level=6]\nE     - paragraph: 169 KB\nE     - button &amp;quot;\uf2f9&amp;quot;\nE     - button &amp;quot;\uf06e&amp;quot;\nE     - button &amp;quot;\uf33d&amp;quot;\nE     - button &amp;quot;\uf2ed&amp;quot;\nE     - button &amp;quot;Modify&amp;quot;\nE     - text: doc-back.jpg \uf1da Expiry date\nE     - button &amp;quot;\uf0c9&amp;quot;\nE     - heading &amp;quot;doc-back.jpg&amp;quot; [level=6]\nE     - paragraph: 759 KB\nE     - button &amp;quot;\uf2f9&amp;quot;\nE     - button &amp;quot;\uf06e&amp;quot;\nE     - button &amp;quot;\uf33d&amp;quot;\nE     - button &amp;quot;\uf2ed&amp;quot;\nE     - button &amp;quot;Modify&amp;quot;\nE     - text: Verification SENTINEL095931613F99686-F... \uf1da Expiry date\nE     - button &amp;quot;\uf0c9&amp;quot;\nE     - heading &amp;quot;SENTINEL095931613F99686-Facial Biometrics Verification.pdf&amp;quot; [level=6]\nE     - paragraph: 1 MB\nE     - button &amp;quot;\uf2f9&amp;quot;\nE     - button &amp;quot;\uf06e&amp;quot;\nE     - button &amp;quot;\uf33d&amp;quot;\nE     - button &amp;quot;\uf2ed&amp;quot;\nE     - button &amp;quot;Modify&amp;quot;\nE     - text: photo.jpg \uf1da Expiry date\nE     - button &amp;quot;\uf0c9&amp;quot;\nE     - heading &amp;quot;photo.jpg&amp;quot; [level=6]\nE     - paragraph: 167 KB\nE     - button &amp;quot;\uf2f9&amp;quot;\nE     - button &amp;quot;\uf06e&amp;quot;\nE     - button &amp;quot;\uf33d&amp;quot;\nE     - button &amp;quot;\uf2ed&amp;quot;\nE     - button &amp;quot;Modify&amp;quot;\nE     - status\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_groups_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_groups_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_groups_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_uploaded_documents[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_uploaded_documents[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_uploaded_documents[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_action_buttons[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_action_buttons[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_action_buttons[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_expiry_indicators[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_expiry_indicators[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_expiry_indicators[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_drag_handles[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_drag_handles[chromium]&#34;, &#34;duration&#34;: &#34;00:01:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_drag_handles[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:01:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_reupload_formats[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_reupload_formats[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_document_reupload_formats[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_pdf_document_previews[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_pdf_document_previews[chromium]&#34;, &#34;duration&#34;: &#34;00:00:14&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_pdf_document_previews[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:14&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_image_document_previews[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_image_document_previews[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_image_document_previews[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_document_downloads[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_document_downloads[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_all_document_downloads[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_modify_dialog_cancel[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_modify_dialog_cancel[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_verify_modify_dialog_cancel[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_01_heading_and_description[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_01_heading_and_description[chromium]&#34;, &#34;duration&#34;: &#34;00:00:17&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_01_heading_and_description[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:17&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_02_single_and_daily_tabs[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_02_single_and_daily_tabs[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_02_single_and_daily_tabs[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_03_client_type_locked[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_03_client_type_locked[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_03_client_type_locked[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_04_name_field[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_04_name_field[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_04_name_field[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_05_gender_options_and_selection[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_05_gender_options_and_selection[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_05_gender_options_and_selection[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_06_date_of_birth[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_06_date_of_birth[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_06_date_of_birth[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_07_citizenship_and_birthplace[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_07_citizenship_and_birthplace[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_07_citizenship_and_birthplace[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_08_ongoing_screening_checkbox[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_08_ongoing_screening_checkbox[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_08_ongoing_screening_checkbox[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_09_analyze_button[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_09_analyze_button[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_09_analyze_button[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_10_connected_party_section[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_10_connected_party_section[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_10_connected_party_section[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_11_results_header[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_11_results_header[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_11_results_header[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_12_result_status_tabs[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_12_result_status_tabs[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_12_result_status_tabs[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_13_match_count_consistency[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_13_match_count_consistency[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_13_match_count_consistency[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_14_result_tables_and_filters[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_14_result_tables_and_filters[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_14_result_tables_and_filters[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_15_back_to_screening[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_15_back_to_screening[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_screening_15_back_to_screening[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_01_form_loaded[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_01_form_loaded[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_01_form_loaded[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_02_client_id[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_02_client_id[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_02_client_id[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_03_text_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_03_text_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_03_text_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_04_dropdowns[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_04_dropdowns[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_04_dropdowns[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_05_date_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_05_date_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_05_date_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_06_nationality_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_06_nationality_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_06_nationality_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_07_default_nationality[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_07_default_nationality[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_07_default_nationality[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_08_address_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_08_address_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_08_address_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_09_source_of_wealth[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_09_source_of_wealth[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_09_source_of_wealth[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_10_save_button[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_10_save_button[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_10_save_button[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_11_full_legal_name_entry[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_11_full_legal_name_entry[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_11_full_legal_name_entry[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_12_full_name_edit[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_12_full_name_edit[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_12_full_name_edit[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_13_contact_number_entry[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_13_contact_number_entry[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_13_contact_number_entry[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_14_email_address_entry[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_14_email_address_entry[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_14_email_address_entry[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_15_document_number_entry[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_15_document_number_entry[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_15_document_number_entry[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_16_passport_number_entry[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_16_passport_number_entry[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_16_passport_number_entry[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-full_name]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-full_name]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-full_name]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-contact]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-contact]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-contact]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-email]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-email]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-email]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-document_number]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-document_number]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-document_number]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-passport_number]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-passport_number]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_17_text_fields_can_be_cleared[chromium-passport_number]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_18_both_addresses_accept_text[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_18_both_addresses_accept_text[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_18_both_addresses_accept_text[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_19_addresses_are_independent[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_19_addresses_are_independent[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_19_addresses_are_independent[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_20_gender_dropdown_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_20_gender_dropdown_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_20_gender_dropdown_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_21_gender_can_be_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_21_gender_can_be_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_21_gender_can_be_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_22_residency_country_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_22_residency_country_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_22_residency_country_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_23_residency_country_selection[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_23_residency_country_selection[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_23_residency_country_selection[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_24_nationality_country_selection[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_24_nationality_country_selection[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_24_nationality_country_selection[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_25_occupation_dropdown_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_25_occupation_dropdown_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_25_occupation_dropdown_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_26_occupation_can_be_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_26_occupation_can_be_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_26_occupation_can_be_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_27_single_nationality_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_27_single_nationality_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_27_single_nationality_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_28_dual_nationality_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_28_dual_nationality_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:15&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_28_dual_nationality_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:15&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_29_multiple_nationality_fields[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_29_multiple_nationality_fields[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_29_multiple_nationality_fields[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:1975: in test_kyc_29_multiple_nationality_fields\n    assert self.individual.kyc_nationality_selects().count() &amp;gt;= 3\nE   assert 1 &amp;gt;= 3\nE    +  where 1 = count()\nE    +    where count = &amp;lt;Locator frame=&amp;lt;Frame name= url=&amp;#x27;https://sentinel-austrac-qa.northlark.com/nolimit/app/onboarding/individual/process?client=SENTINEL095931613F99686&amp;amp;step=kyc-form&amp;#x27;&amp;gt; selector=&amp;#x27;.kyc-form &amp;gt;&amp;gt; .border-box &amp;gt;&amp;gt; internal:has=&amp;quot;.border-box-label &amp;gt;&amp;gt; internal:has-text=/^Nationality$/&amp;quot; &amp;gt;&amp;gt; .ant-select&amp;#x27;&amp;gt;.count\nE    +      where &amp;lt;Locator frame=&amp;lt;Frame name= url=&amp;#x27;https://sentinel-austrac-qa.northlark.com/nolimit/app/onboarding/individual/process?client=SENTINEL095931613F99686&amp;amp;step=kyc-form&amp;#x27;&amp;gt; selector=&amp;#x27;.kyc-form &amp;gt;&amp;gt; .border-box &amp;gt;&amp;gt; internal:has=&amp;quot;.border-box-label &amp;gt;&amp;gt; internal:has-text=/^Nationality$/&amp;quot; &amp;gt;&amp;gt; .ant-select&amp;#x27;&amp;gt; = kyc_nationality_selects()\nE    +        where kyc_nationality_selects = &amp;lt;pages.individualOnboardingPage.IndividualOnboardingPage object at 0x000002988D037250&amp;gt;.kyc_nationality_selects\nE    +          where &amp;lt;pages.individualOnboardingPage.IndividualOnboardingPage object at 0x000002988D037250&amp;gt; = &amp;lt;test_individual_onboarding_page.TestIndividualOnboarding object at 0x000002988C447570&amp;gt;.individual\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_30_switch_nationality_back_to_single[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_30_switch_nationality_back_to_single[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_30_switch_nationality_back_to_single[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_31_nationality_radio_exclusivity[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_31_nationality_radio_exclusivity[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_31_nationality_radio_exclusivity[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:1986: in test_kyc_31_nationality_radio_exclusivity\n    self.individual.kyc_choose_nationality_type(kind)\npages\\individualOnboardingPage.py:3030: in kyc_choose_nationality_type\n    expect(radio).to_be_checked()\nE   AssertionError: Locator expected to be checked\nE   Actual value: unchecked \nE   Call log:\nE     - Expect &amp;quot;to_be_checked&amp;quot; locator(&amp;quot;.kyc-form&amp;quot;).locator(&amp;quot;.border-box&amp;quot;).filter(has=locator(&amp;quot;.border-box-label&amp;quot;).filter(has_text=re.compile(r&amp;quot;^Nationality$&amp;quot;))).locator(&amp;quot;input[type=\\&amp;quot;radio\\&amp;quot;][value=\\&amp;quot;2\\&amp;quot;]&amp;quot;) with timeout 5000ms\nE     - waiting for locator(&amp;quot;.kyc-form&amp;quot;).locator(&amp;quot;.border-box&amp;quot;).filter(has=locator(&amp;quot;.border-box-label&amp;quot;).filter(has_text=re.compile(r&amp;quot;^Nationality$&amp;quot;))).locator(&amp;quot;input[type=\\&amp;quot;radio\\&amp;quot;][value=\\&amp;quot;2\\&amp;quot;]&amp;quot;)\nE       14 \u00d7 locator resolved to &amp;lt;input value=&amp;quot;2&amp;quot; type=&amp;quot;radio&amp;quot; name=&amp;quot;_r_i_&amp;quot; class=&amp;quot;ant-radio-input&amp;quot;/&amp;gt;\nE          - unexpected value &amp;quot;unchecked&amp;quot;\nE   \nE   Aria snapshot:\nE   - radio &amp;quot;Dual \uf05a&amp;quot;\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_32_dual_passport_numbers_independent[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_32_dual_passport_numbers_independent[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_32_dual_passport_numbers_independent[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_33_multiple_passport_numbers_independent[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_33_multiple_passport_numbers_independent[chromium]&#34;, &#34;duration&#34;: &#34;00:00:36&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_33_multiple_passport_numbers_independent[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:36&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2001: in test_kyc_33_multiple_passport_numbers_independent\n    inputs.nth(index).fill(f&amp;quot;P12345{index:03d}&amp;quot;)\n.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:11640: in fill\n    self._sync(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_locator.py:228: in fill\n    return await self._frame.fill(self._selector, strict=True, **params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:641: in fill\n    await self._fill(**locals_to_params(locals()))\n.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:653: in _fill\n    await self._channel.send(&amp;quot;fill&amp;quot;, self._timeout, locals_to_params(locals()))\n.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:636: in wrap_api_call\n    raise rewrite_error(error, f&amp;quot;{parsed_st[&amp;#x27;apiName&amp;#x27;]}: {error}&amp;quot;) from None\nE   playwright._impl._errors.TimeoutError: Locator.fill: Timeout 30000ms exceeded.\nE   Call log:\nE     - waiting for locator(&amp;quot;.kyc-form&amp;quot;).get_by_placeholder(&amp;quot;Enter passport number&amp;quot;, exact=True).nth(1)\nE       - locator resolved to &amp;lt;input value=&amp;quot;&amp;quot; type=&amp;quot;text&amp;quot; placeholder=&amp;quot;Enter passport number&amp;quot; class=&amp;quot;text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-950 border rounded-lg border-gray-300 dark:border-gray-700 disabled:bg-gray-200 disabled:dark:bg-gray-800 w-full &amp;quot;/&amp;gt;\nE       - fill(&amp;quot;P12345001&amp;quot;)\nE     - attempting fill action\nE       - waiting for element to be visible, enabled and editable\nE     - element was detached from the DOM, retrying\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-dob]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-dob]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-dob]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-issue]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-issue]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-issue]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-expiry]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-expiry]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_34_date_calendar_opens[chromium-expiry]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-dob]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-dob]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-dob]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-issue]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-issue]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-issue]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-expiry]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-expiry]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_35_date_can_be_selected[chromium-expiry]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_36_wealth_checkboxes_initially_clear[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_36_wealth_checkboxes_initially_clear[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_36_wealth_checkboxes_initially_clear[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_37_all_16_wealth_options_toggle[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_37_all_16_wealth_options_toggle[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_37_all_16_wealth_options_toggle[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_38_multiple_wealth_selections[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_38_multiple_wealth_selections[chromium]&#34;, &#34;duration&#34;: &#34;00:00:04&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_38_multiple_wealth_selections[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:04&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2045: in test_kyc_38_multiple_wealth_selections\n    assert set(self.individual.kyc_wealth_checked_values()) == set(selected)\nE   AssertionError: assert {&amp;#x27;Business In...tment Income&amp;#x27;} == {&amp;#x27;Business In...e&amp;#x27;, &amp;#x27;Savings&amp;#x27;}\nE     \nE     Extra items in the right set:\nE     &amp;#x27;Savings&amp;#x27;\nE     \nE     Full diff:\nE       {\nE           &amp;#x27;Business Income&amp;#x27;,...\nE     \nE     ...Full output truncated (3 lines hidden), use &amp;#x27;-vv&amp;#x27; to show\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_39_uncheck_preserves_other_wealth[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_39_uncheck_preserves_other_wealth[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_39_uncheck_preserves_other_wealth[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_40_other_wealth_option[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_40_other_wealth_option[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_40_other_wealth_option[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_41_save_button_enabled[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_41_save_button_enabled[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_41_save_button_enabled[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_01_page_loaded[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_01_page_loaded[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_01_page_loaded[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_02_all_five_groups_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_02_all_five_groups_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:15&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_02_all_five_groups_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:15&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Country / Jurisdiction Risk]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Country / Jurisdiction Risk]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Country / Jurisdiction Risk]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Politically Exposed Person (PEP) Status]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Politically Exposed Person (PEP) Status]&#34;, &#34;duration&#34;: &#34;00:00:16&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Politically Exposed Person (PEP) Status]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:16&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Australian Residential Status]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Australian Residential Status]&#34;, &#34;duration&#34;: &#34;00:00:14&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Australian Residential Status]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:14&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Transfer of Funds]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Transfer of Funds]&#34;, &#34;duration&#34;: &#34;00:00:19&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Transfer of Funds]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:19&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Adverse Media]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Adverse Media]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_03_radio_options_visible[chromium-Adverse Media]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_04_initial_selections[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_04_initial_selections[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_04_initial_selections[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2144: in test_risk_04_initial_selections\n    assert (\nE   AssertionError: assert [&amp;#x27;nonResidence&amp;#x27;] == []\nE     \nE     Left contains one more item: &amp;#x27;nonResidence&amp;#x27;\nE     \nE     Full diff:\nE     - []\nE     + [\nE     +     &amp;#x27;nonResidence&amp;#x27;,\nE     + ]\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_05_initial_score_and_rating[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_05_initial_score_and_rating[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_05_initial_score_and_rating[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2150: in test_risk_05_initial_score_and_rating\n    assert self.individual.risk_total_score() == 4\nE   assert 7 == 4\nE    +  where 7 = risk_total_score()\nE    +    where risk_total_score = &amp;lt;pages.individualOnboardingPage.IndividualOnboardingPage object at 0x000002988ECFD090&amp;gt;.risk_total_score\nE    +      where &amp;lt;pages.individualOnboardingPage.IndividualOnboardingPage object at 0x000002988ECFD090&amp;gt; = &amp;lt;test_individual_onboarding_page.TestIndividualOnboarding object at 0x000002988C3DC320&amp;gt;.individual\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-low]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-low]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-low]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-other]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-other]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-other]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-high]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-high]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Country / Jurisdiction Risk-high]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-nonPep]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-nonPep]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-nonPep]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-associate]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-associate]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-associate]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-pep]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-pep]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Politically Exposed Person (PEP) Status-pep]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-residence]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-residence]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-residence]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-nonResidence]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-nonResidence]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Australian Residential Status-nonResidence]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-bankTransfer]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-bankTransfer]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-bankTransfer]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-cash]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-cash]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Transfer of Funds-cash]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-noHits]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-noHits]&#34;, &#34;duration&#34;: &#34;00:00:17&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-noHits]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:17&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-confirmed]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-confirmed]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_06_each_option_updates_score[chromium-Adverse Media-confirmed]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2184: in test_risk_06_each_option_updates_score\n    self.individual.risk_verify_calculation()\npages\\individualOnboardingPage.py:3417: in risk_verify_calculation\n    assert actual_score == expected_score, (\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Risk score mismatch: expected 7, actual 9\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Country / Jurisdiction Risk]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Country / Jurisdiction Risk]&#34;, &#34;duration&#34;: &#34;00:00:13&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Country / Jurisdiction Risk]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:13&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Politically Exposed Person (PEP) Status]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Politically Exposed Person (PEP) Status]&#34;, &#34;duration&#34;: &#34;00:00:20&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Politically Exposed Person (PEP) Status]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:20&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Australian Residential Status]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Australian Residential Status]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Australian Residential Status]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Transfer of Funds]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Transfer of Funds]&#34;, &#34;duration&#34;: &#34;00:00:13&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Transfer of Funds]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:13&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Adverse Media]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Adverse Media]&#34;, &#34;duration&#34;: &#34;00:00:25&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_07_radio_selection_is_exclusive[chromium-Adverse Media]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:25&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_08_low_classification[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_08_low_classification[chromium]&#34;, &#34;duration&#34;: &#34;00:00:18&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_08_low_classification[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:18&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_09_medium_classification[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_09_medium_classification[chromium]&#34;, &#34;duration&#34;: &#34;00:00:15&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_09_medium_classification[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:15&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_10_high_classification[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_10_high_classification[chromium]&#34;, &#34;duration&#34;: &#34;00:00:13&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_10_high_classification[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:13&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_11_complete_onboarding_button_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_11_complete_onboarding_button_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_11_complete_onboarding_button_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_44_dob_calendar_icon_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_44_dob_calendar_icon_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_44_dob_calendar_icon_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_45_passport_issue_calendar_icon_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_45_passport_issue_calendar_icon_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:20&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_45_passport_issue_calendar_icon_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:20&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_46_passport_expiry_calendar_icon_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_46_passport_expiry_calendar_icon_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_46_passport_expiry_calendar_icon_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_17_rating_range_heading_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_17_rating_range_heading_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:16&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_17_rating_range_heading_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:16&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_18_rating_column_header_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_18_rating_column_header_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_18_rating_column_header_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_19_range_column_header_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_19_range_column_header_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_19_range_column_header_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_20_all_rating_levels_visible[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_20_all_rating_levels_visible[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_20_all_rating_levels_visible[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_21_rating_score_ranges_correct[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_21_rating_score_ranges_correct[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_21_rating_score_ranges_correct[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_22_rating_colors_correct[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_22_rating_colors_correct[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_22_rating_colors_correct[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_350_active_tab[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_350_active_tab[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_350_active_tab[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_354_section_01[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_354_section_01[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_354_section_01[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_359_gender_label[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_359_gender_label[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_359_gender_label[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_379_nationality_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_379_nationality_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_379_nationality_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_386_passport_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_386_passport_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_386_passport_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_399_address_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_399_address_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_399_address_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_400_home_address_label[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_400_home_address_label[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_400_home_address_label[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_403_residency_address_label[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_403_residency_address_label[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_403_residency_address_label[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_410_all_wealth_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_410_all_wealth_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_partial_410_all_wealth_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab[chromium]&#34;, &#34;duration&#34;: &#34;00:00:05&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:05&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_414_country_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_414_country_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_414_country_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_417_individual_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_417_individual_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_417_individual_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_420_residential_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_420_residential_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_420_residential_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_423_transfer_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_423_transfer_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_423_transfer_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_426_adverse_media_heading[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_426_adverse_media_heading[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_426_adverse_media_heading[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_449_classification_placement[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_449_classification_placement[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_449_classification_placement[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_430_summary_headers[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_430_summary_headers[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_430_summary_headers[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_431_five_risk_factors[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_431_five_risk_factors[chromium]&#34;, &#34;duration&#34;: &#34;00:00:07&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_431_five_risk_factors[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:07&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_432_country_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_432_country_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_432_country_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_433_individual_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Error&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_433_individual_selected[chromium]::setup&#34;, &#34;duration&#34;: &#34;00:00:18&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Error&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_433_individual_selected[chromium]::setup&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:18&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:39: in setup_individual\n    login.open(base_url)\npages\\loginPage.py:72: in open\n    expect(self.login_heading).to_be_visible(\nE   AssertionError: Locator expected to be visible\nE   Actual value: None\nE   Error: element(s) not found \nE   Call log:\nE     - Expect &amp;quot;to_be_visible&amp;quot; get_by_role(&amp;quot;heading&amp;quot;, name=&amp;quot;Log in&amp;quot;, exact=True) with timeout 15000ms\nE     - waiting for get_by_role(&amp;quot;heading&amp;quot;, name=&amp;quot;Log in&amp;quot;, exact=True)\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_434_residential_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_434_residential_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_434_residential_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_435_transfer_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_435_transfer_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_435_transfer_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_436_adverse_media_selected[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_436_adverse_media_selected[chromium]&#34;, &#34;duration&#34;: &#34;00:00:06&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_436_adverse_media_selected[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:06&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_risk_scores[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_risk_scores[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_risk_scores[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_country_score_sync[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_country_score_sync[chromium]&#34;, &#34;duration&#34;: &#34;00:00:12&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_437_country_score_sync[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:12&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2878: in test_risk_partial_437_country_score_sync\n    self.individual.risk_partial_verify_country_score_sync()\npages\\individualOnboardingPage.py:5262: in risk_partial_verify_country_score_sync\n    expect(rows.nth(other_index)).not_to_have_class(\nE   AssertionError: Locator expected not to have class &amp;#x27;re.compile(&amp;#x27;\\\\bfont-semibold\\\\b&amp;#x27;)&amp;#x27;\nE   Actual value: font-semibold \nE   Call log:\nE     - Expect &amp;quot;not_to_have_class&amp;quot; locator(&amp;quot;table.signature-table&amp;quot;).first.locator(&amp;quot;tbody tr&amp;quot;).nth(1) with timeout 5000ms\nE     - waiting for locator(&amp;quot;table.signature-table&amp;quot;).first.locator(&amp;quot;tbody tr&amp;quot;).nth(1)\nE       14 \u00d7 locator resolved to &amp;lt;tr class=&amp;quot;font-semibold&amp;quot;&amp;gt;\u2026&amp;lt;/tr&amp;gt;\nE          - unexpected value &amp;quot;font-semibold&amp;quot;\nE   \nE   Aria snapshot:\nE   - row &amp;quot;Other countries and jurisdictions 3&amp;quot;:\nE     - cell &amp;quot;Other countries and jurisdictions&amp;quot;\nE     - cell &amp;quot;3&amp;quot;\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_416_country_radio_mutual_exclusivity[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_416_country_radio_mutual_exclusivity[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_416_country_radio_mutual_exclusivity[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_441_inspect_update_notification[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_441_inspect_update_notification[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_441_inspect_update_notification[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2892: in test_risk_partial_441_inspect_update_notification\n    self.individual.risk_partial_441_inspect_update_notification()\npages\\individualOnboardingPage.py:5457: in risk_partial_441_inspect_update_notification\n    raise AssertionError(\nE   AssertionError: Neither Update Changes nor Complete Onboarding is visible.\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab_pink[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab_pink[chromium]&#34;, &#34;duration&#34;: &#34;00:00:11&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_partial_413_active_tab_pink[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:11&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_432_436_pink_attributes[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_432_436_pink_attributes[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_432_436_pink_attributes[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_416_complete_country_options[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_416_complete_country_options[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_416_complete_country_options[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_437_score_weights[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_437_score_weights[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_437_score_weights[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_450_classification_all_levels[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_450_classification_all_levels[chromium]&#34;, &#34;duration&#34;: &#34;00:00:21&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_risk_excel_450_classification_all_levels[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:21&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2929: in test_risk_excel_450_classification_all_levels\n    self.individual.risk_450_verify_classification_for_all_levels()\npages\\individualOnboardingPage.py:6102: in risk_450_verify_classification_for_all_levels\n    expect(total_cell).to_have_text(\nE   AssertionError: Locator expected to have text &amp;#x27;19&amp;#x27;\nE   Actual value: 11 \nE   Call log:\nE     - Expect &amp;quot;to_have_text&amp;quot; locator(&amp;quot;table.signature-table&amp;quot;).first.locator(&amp;quot;tbody tr&amp;quot;).last.locator(&amp;quot;td&amp;quot;).last with timeout 10000ms\nE     - waiting for locator(&amp;quot;table.signature-table&amp;quot;).first.locator(&amp;quot;tbody tr&amp;quot;).last.locator(&amp;quot;td&amp;quot;).last\nE       - locator resolved to &amp;lt;td class=&amp;quot;text-center font-bold&amp;quot;&amp;gt;9&amp;lt;/td&amp;gt;\nE       - unexpected value &amp;quot;9&amp;quot;\nE       23 \u00d7 locator resolved to &amp;lt;td class=&amp;quot;text-center font-bold&amp;quot;&amp;gt;11&amp;lt;/td&amp;gt;\nE          - unexpected value &amp;quot;11&amp;quot;\nE   \nE   Aria snapshot:\nE   - cell &amp;quot;11&amp;quot;\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_47_tab_active_style[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_47_tab_active_style[chromium]&#34;, &#34;duration&#34;: &#34;00:00:08&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_47_tab_active_style[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:08&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;tests\\ui\\test_individual_onboarding_page.py:2938: in test_kyc_47_tab_active_style\n    self.individual.kyc_47_verify_active_tab_pink()\npages\\individualOnboardingPage.py:6212: in kyc_47_verify_active_tab_pink\n    assert is_pink, (\n           ^^^^^^^\nE   AssertionError: Excel 350: Active KYC tab is not pink. Actual RGBA: [252, 233, 240, 255]\n&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_48_section_heading_style[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_48_section_heading_style[chromium]&#34;, &#34;duration&#34;: &#34;00:00:10&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_48_section_heading_style[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:10&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_49_required_labels[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_49_required_labels[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_49_required_labels[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_50_wealth_labels_exact[chromium]&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_50_wealth_labels_exact[chromium]&#34;, &#34;duration&#34;: &#34;00:00:09&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/ui/test_individual_onboarding_page.py::TestIndividualOnboarding::test_kyc_50_wealth_labels_exact[chromium]&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:09&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}]}, &#34;renderCollapsed&#34;: [&#34;passed&#34;], &#34;initialSort&#34;: &#34;result&#34;, &#34;title&#34;: &#34;shared_client_regression.html&#34;}"></div>
+    <script>
+      (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+const { getCollapsedCategory, setCollapsedIds } = require('./storage.js')
+
+class DataManager {
+    setManager(data) {
+        const collapsedCategories = [...getCollapsedCategory(data.renderCollapsed)]
+        const collapsedIds = []
+        const tests = Object.values(data.tests).flat().map((test, index) => {
+            const collapsed = collapsedCategories.includes(test.result.toLowerCase())
+            const id = `test_${index}`
+            if (collapsed) {
+                collapsedIds.push(id)
+            }
+            return {
+                ...test,
+                id,
+                collapsed,
+            }
+        })
+        const dataBlob = { ...data, tests }
+        this.data = { ...dataBlob }
+        this.renderData = { ...dataBlob }
+        setCollapsedIds(collapsedIds)
+    }
+
+    get allData() {
+        return { ...this.data }
+    }
+
+    resetRender() {
+        this.renderData = { ...this.data }
+    }
+
+    setRender(data) {
+        this.renderData.tests = [...data]
+    }
+
+    toggleCollapsedItem(id) {
+        this.renderData.tests = this.renderData.tests.map((test) =>
+            test.id === id ? { ...test, collapsed: !test.collapsed } : test,
+        )
+    }
+
+    set allCollapsed(collapsed) {
+        this.renderData = { ...this.renderData, tests: [...this.renderData.tests.map((test) => (
+            { ...test, collapsed }
+        ))] }
+    }
+
+    get testSubset() {
+        return [...this.renderData.tests]
+    }
+
+    get environment() {
+        return this.renderData.environment
+    }
+
+    get initialSort() {
+        return this.data.initialSort
+    }
+}
+
+module.exports = {
+    manager: new DataManager(),
+}
+
+},{"./storage.js":8}],2:[function(require,module,exports){
+const mediaViewer = require('./mediaviewer.js')
+const templateEnvRow = document.getElementById('template_environment_row')
+const templateResult = document.getElementById('template_results-table__tbody')
+
+function htmlToElements(html) {
+    const temp = document.createElement('template')
+    temp.innerHTML = html
+    return temp.content.childNodes
+}
+
+const find = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return elem.querySelector(selector)
+}
+
+const findAll = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return [...elem.querySelectorAll(selector)]
+}
+
+const dom = {
+    getStaticRow: (key, value) => {
+        const envRow = templateEnvRow.content.cloneNode(true)
+        const isObj = typeof value === 'object' && value !== null
+        const values = isObj ? Object.keys(value).map((k) => `${k}: ${value[k]}`) : null
+
+        const valuesElement = htmlToElements(
+            values ? `<ul>${values.map((val) => `<li>${val}</li>`).join('')}<ul>` : `<div>${value}</div>`)[0]
+        const td = findAll('td', envRow)
+        td[0].textContent = key
+        td[1].appendChild(valuesElement)
+
+        return envRow
+    },
+    getResultTBody: ({ testId, id, log, extras, resultsTableRow, tableHtml, result, collapsed }) => {
+        const resultBody = templateResult.content.cloneNode(true)
+        resultBody.querySelector('tbody').classList.add(result.toLowerCase())
+        resultBody.querySelector('tbody').id = testId
+        resultBody.querySelector('.collapsible').dataset.id = id
+
+        resultsTableRow.forEach((html) => {
+            const t = document.createElement('template')
+            t.innerHTML = html
+            resultBody.querySelector('.collapsible').appendChild(t.content)
+        })
+
+        if (log) {
+            // Wrap lines starting with "E" with span.error to color those lines red
+            const wrappedLog = log.replace(/^E.*$/gm, (match) => `<span class="error">${match}</span>`)
+            resultBody.querySelector('.log').innerHTML = wrappedLog
+        } else {
+            resultBody.querySelector('.log').remove()
+        }
+
+        if (collapsed) {
+            resultBody.querySelector('.collapsible > .col-result')?.classList.add('collapsed')
+            resultBody.querySelector('.extras-row').classList.add('hidden')
+        } else {
+            resultBody.querySelector('.collapsible > .col-result')?.classList.remove('collapsed')
+        }
+
+        const media = []
+        extras?.forEach(({ name, format_type, content }) => {
+            if (['image', 'video'].includes(format_type)) {
+                media.push({ path: content, name, format_type })
+            }
+
+            if (format_type === 'html') {
+                resultBody.querySelector('.extraHTML').insertAdjacentHTML('beforeend', `<div>${content}</div>`)
+            }
+        })
+        mediaViewer.setup(resultBody, media)
+
+        // Add custom html from the pytest_html_results_table_html hook
+        tableHtml?.forEach((item) => {
+            resultBody.querySelector('td[class="extra"]').insertAdjacentHTML('beforeend', item)
+        })
+
+        return resultBody
+    },
+}
+
+module.exports = {
+    dom,
+    htmlToElements,
+    find,
+    findAll,
+}
+
+},{"./mediaviewer.js":6}],3:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const storageModule = require('./storage.js')
+
+const getFilteredSubSet = (filter) =>
+    manager.allData.tests.filter(({ result }) => filter.includes(result.toLowerCase()))
+
+const doInitFilter = () => {
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+}
+
+const doFilter = (type, show) => {
+    if (show) {
+        storageModule.showCategory(type)
+    } else {
+        storageModule.hideCategory(type)
+    }
+
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+
+    const sortColumn = storageModule.getSort()
+    doSort(sortColumn, true)
+}
+
+module.exports = {
+    doFilter,
+    doInitFilter,
+}
+
+},{"./datamanager.js":1,"./sort.js":7,"./storage.js":8}],4:[function(require,module,exports){
+const { redraw, bindEvents, renderStatic } = require('./main.js')
+const { doInitFilter } = require('./filter.js')
+const { doInitSort } = require('./sort.js')
+const { manager } = require('./datamanager.js')
+const data = JSON.parse(document.getElementById('data-container').dataset.jsonblob)
+
+function init() {
+    manager.setManager(data)
+    doInitFilter()
+    doInitSort()
+    renderStatic()
+    redraw()
+    bindEvents()
+}
+
+init()
+
+},{"./datamanager.js":1,"./filter.js":3,"./main.js":5,"./sort.js":7}],5:[function(require,module,exports){
+const { dom, find, findAll } = require('./dom.js')
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const { doFilter } = require('./filter.js')
+const {
+    getVisible,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    getSortDirection,
+    possibleFilters,
+} = require('./storage.js')
+
+const removeChildren = (node) => {
+    while (node.firstChild) {
+        node.removeChild(node.firstChild)
+    }
+}
+
+const renderStatic = () => {
+    const renderEnvironmentTable = () => {
+        const environment = manager.environment
+        const rows = Object.keys(environment).map((key) => dom.getStaticRow(key, environment[key]))
+        const table = document.getElementById('environment')
+        removeChildren(table)
+        rows.forEach((row) => table.appendChild(row))
+    }
+    renderEnvironmentTable()
+}
+
+const addItemToggleListener = (elem) => {
+    elem.addEventListener('click', ({ target }) => {
+        const id = target.parentElement.dataset.id
+        manager.toggleCollapsedItem(id)
+
+        const collapsedIds = getCollapsedIds()
+        if (collapsedIds.includes(id)) {
+            const updated = collapsedIds.filter((item) => item !== id)
+            setCollapsedIds(updated)
+        } else {
+            collapsedIds.push(id)
+            setCollapsedIds(collapsedIds)
+        }
+        redraw()
+    })
+}
+
+const renderContent = (tests) => {
+    const sortAttr = getSort(manager.initialSort)
+    const sortAsc = JSON.parse(getSortDirection())
+    const rows = tests.map(dom.getResultTBody)
+    const table = document.getElementById('results-table')
+    const tableHeader = document.getElementById('results-table-head')
+
+    const newTable = document.createElement('table')
+    newTable.id = 'results-table'
+
+    // remove all sorting classes and set the relevant
+    findAll('.sortable', tableHeader).forEach((elem) => elem.classList.remove('asc', 'desc'))
+    tableHeader.querySelector(`.sortable[data-column-type="${sortAttr}"]`)?.classList.add(sortAsc ? 'desc' : 'asc')
+    newTable.appendChild(tableHeader)
+
+    if (!rows.length) {
+        const emptyTable = document.getElementById('template_results-table__body--empty').content.cloneNode(true)
+        newTable.appendChild(emptyTable)
+    } else {
+        rows.forEach((row) => {
+            if (!!row) {
+                findAll('.collapsible td:not(.col-links', row).forEach(addItemToggleListener)
+                find('.logexpander', row).addEventListener('click',
+                    (evt) => evt.target.parentNode.classList.toggle('expanded'),
+                )
+                newTable.appendChild(row)
+            }
+        })
+    }
+
+    table.replaceWith(newTable)
+}
+
+const renderDerived = () => {
+    const currentFilter = getVisible()
+    possibleFilters.forEach((result) => {
+        const input = document.querySelector(`input[data-test-result="${result}"]`)
+        input.checked = currentFilter.includes(result)
+    })
+}
+
+const bindEvents = () => {
+    const filterColumn = (evt) => {
+        const { target: element } = evt
+        const { testResult } = element.dataset
+
+        doFilter(testResult, element.checked)
+        const collapsedIds = getCollapsedIds()
+        const updated = manager.renderData.tests.map((test) => {
+            return {
+                ...test,
+                collapsed: collapsedIds.includes(test.id),
+            }
+        })
+        manager.setRender(updated)
+        redraw()
+    }
+
+    const header = document.getElementById('environment-header')
+    header.addEventListener('click', () => {
+        const table = document.getElementById('environment')
+        table.classList.toggle('hidden')
+        header.classList.toggle('collapsed')
+    })
+
+    findAll('input[name="filter_checkbox"]').forEach((elem) => {
+        elem.addEventListener('click', filterColumn)
+    })
+
+    findAll('.sortable').forEach((elem) => {
+        elem.addEventListener('click', (evt) => {
+            const { target: element } = evt
+            const { columnType } = element.dataset
+            doSort(columnType)
+            redraw()
+        })
+    })
+
+    document.getElementById('show_all_details').addEventListener('click', () => {
+        manager.allCollapsed = false
+        setCollapsedIds([])
+        redraw()
+    })
+    document.getElementById('hide_all_details').addEventListener('click', () => {
+        manager.allCollapsed = true
+        const allIds = manager.renderData.tests.map((test) => test.id)
+        setCollapsedIds(allIds)
+        redraw()
+    })
+}
+
+const redraw = () => {
+    const { testSubset } = manager
+
+    renderContent(testSubset)
+    renderDerived()
+}
+
+module.exports = {
+    redraw,
+    bindEvents,
+    renderStatic,
+}
+
+},{"./datamanager.js":1,"./dom.js":2,"./filter.js":3,"./sort.js":7,"./storage.js":8}],6:[function(require,module,exports){
+class MediaViewer {
+    constructor(assets) {
+        this.assets = assets
+        this.index = 0
+    }
+
+    nextActive() {
+        this.index = this.index === this.assets.length - 1 ? 0 : this.index + 1
+        return [this.activeFile, this.index]
+    }
+
+    prevActive() {
+        this.index = this.index === 0 ? this.assets.length - 1 : this.index -1
+        return [this.activeFile, this.index]
+    }
+
+    get currentIndex() {
+        return this.index
+    }
+
+    get activeFile() {
+        return this.assets[this.index]
+    }
+}
+
+
+const setup = (resultBody, assets) => {
+    if (!assets.length) {
+        resultBody.querySelector('.media').classList.add('hidden')
+        return
+    }
+
+    const mediaViewer = new MediaViewer(assets)
+    const container = resultBody.querySelector('.media-container')
+    const leftArrow = resultBody.querySelector('.media-container__nav--left')
+    const rightArrow = resultBody.querySelector('.media-container__nav--right')
+    const mediaName = resultBody.querySelector('.media__name')
+    const counter = resultBody.querySelector('.media__counter')
+    const imageEl = resultBody.querySelector('img')
+    const sourceEl = resultBody.querySelector('source')
+    const videoEl = resultBody.querySelector('video')
+
+    const setImg = (media, index) => {
+        if (media?.format_type === 'image') {
+            imageEl.src = media.path
+
+            imageEl.classList.remove('hidden')
+            videoEl.classList.add('hidden')
+        } else if (media?.format_type === 'video') {
+            sourceEl.src = media.path
+
+            videoEl.classList.remove('hidden')
+            imageEl.classList.add('hidden')
+        }
+
+        mediaName.innerText = media?.name
+        counter.innerText = `${index + 1} / ${assets.length}`
+    }
+    setImg(mediaViewer.activeFile, mediaViewer.currentIndex)
+
+    const moveLeft = () => {
+        const [media, index] = mediaViewer.prevActive()
+        setImg(media, index)
+    }
+    const doRight = () => {
+        const [media, index] = mediaViewer.nextActive()
+        setImg(media, index)
+    }
+    const openImg = () => {
+        window.open(mediaViewer.activeFile.path, '_blank')
+    }
+    if (assets.length === 1) {
+        container.classList.add('media-container--fullscreen')
+    } else {
+        leftArrow.addEventListener('click', moveLeft)
+        rightArrow.addEventListener('click', doRight)
+    }
+    imageEl.addEventListener('click', openImg)
+}
+
+module.exports = {
+    setup,
+}
+
+},{}],7:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const storageModule = require('./storage.js')
+
+const genericSort = (list, key, ascending, customOrder) => {
+    let sorted
+    if (customOrder) {
+        sorted = list.sort((a, b) => {
+            const aValue = a.result.toLowerCase()
+            const bValue = b.result.toLowerCase()
+
+            const aIndex = customOrder.findIndex((item) => item.toLowerCase() === aValue)
+            const bIndex = customOrder.findIndex((item) => item.toLowerCase() === bValue)
+
+            // Compare the indices to determine the sort order
+            return aIndex - bIndex
+        })
+    } else {
+        sorted = list.sort((a, b) => a[key] === b[key] ? 0 : a[key] > b[key] ? 1 : -1)
+    }
+
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const durationSort = (list, ascending) => {
+    const parseDuration = (duration) => {
+        if (duration.includes(':')) {
+            // If it's in the format "HH:mm:ss"
+            const [hours, minutes, seconds] = duration.split(':').map(Number)
+            return (hours * 3600 + minutes * 60 + seconds) * 1000
+        } else {
+            // If it's in the format "nnn ms"
+            return parseInt(duration)
+        }
+    }
+    const sorted = list.sort((a, b) => parseDuration(a['duration']) - parseDuration(b['duration']))
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const doInitSort = () => {
+    const type = storageModule.getSort(manager.initialSort)
+    const ascending = storageModule.getSortDirection()
+    const list = manager.testSubset
+    const initialOrder = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed', 'Skipped', 'Passed']
+
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    if (type?.toLowerCase() === 'original') {
+        manager.setRender(list)
+    } else {
+        let sortedList
+        switch (type) {
+        case 'duration':
+            sortedList = durationSort(list, ascending)
+            break
+        case 'result':
+            sortedList = genericSort(list, type, ascending, initialOrder)
+            break
+        default:
+            sortedList = genericSort(list, type, ascending)
+            break
+        }
+        manager.setRender(sortedList)
+    }
+}
+
+const doSort = (type, skipDirection) => {
+    const newSortType = storageModule.getSort(manager.initialSort) !== type
+    const currentAsc = storageModule.getSortDirection()
+    let ascending
+    if (skipDirection) {
+        ascending = currentAsc
+    } else {
+        ascending = newSortType ? false : !currentAsc
+    }
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    const list = manager.testSubset
+    const sortedList = type === 'duration' ? durationSort(list, ascending) : genericSort(list, type, ascending)
+    manager.setRender(sortedList)
+}
+
+module.exports = {
+    doInitSort,
+    doSort,
+}
+
+},{"./datamanager.js":1,"./storage.js":8}],8:[function(require,module,exports){
+const possibleFilters = [
+    'passed',
+    'skipped',
+    'failed',
+    'error',
+    'xfailed',
+    'xpassed',
+    'rerun',
+]
+
+const getVisible = () => {
+    const url = new URL(window.location.href)
+    const settings = new URLSearchParams(url.search).get('visible')
+    const lower = (item) => {
+        const lowerItem = item.toLowerCase()
+        if (possibleFilters.includes(lowerItem)) {
+            return lowerItem
+        }
+        return null
+    }
+    return settings === null ?
+        possibleFilters :
+        [...new Set(settings?.split(',').map(lower).filter((item) => item))]
+}
+
+const hideCategory = (categoryToHide) => {
+    const url = new URL(window.location.href)
+    const visibleParams = new URLSearchParams(url.search).get('visible')
+    const currentVisible = visibleParams ? visibleParams.split(',') : [...possibleFilters]
+    const settings = [...new Set(currentVisible)].filter((f) => f !== categoryToHide).join(',')
+
+    url.searchParams.set('visible', settings)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const showCategory = (categoryToShow) => {
+    if (typeof window === 'undefined') {
+        return
+    }
+    const url = new URL(window.location.href)
+    const currentVisible = new URLSearchParams(url.search).get('visible')?.split(',').filter(Boolean) ||
+        [...possibleFilters]
+    const settings = [...new Set([categoryToShow, ...currentVisible])]
+    const noFilter = possibleFilters.length === settings.length || !settings.length
+
+    noFilter ? url.searchParams.delete('visible') : url.searchParams.set('visible', settings.join(','))
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getSort = (initialSort) => {
+    const url = new URL(window.location.href)
+    let sort = new URLSearchParams(url.search).get('sort')
+    if (!sort) {
+        sort = initialSort || 'result'
+    }
+    return sort
+}
+
+const setSort = (type) => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('sort', type)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getCollapsedCategory = (renderCollapsed) => {
+    let categories
+    if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        const collapsedItems = new URLSearchParams(url.search).get('collapsed')
+        switch (true) {
+        case !renderCollapsed && collapsedItems === null:
+            categories = ['passed']
+            break
+        case collapsedItems?.length === 0 || /^["']{2}$/.test(collapsedItems):
+            categories = []
+            break
+        case /^all$/.test(collapsedItems) || collapsedItems === null && /^all$/.test(renderCollapsed):
+            categories = [...possibleFilters]
+            break
+        default:
+            categories = collapsedItems?.split(',').map((item) => item.toLowerCase()) || renderCollapsed
+            break
+        }
+    } else {
+        categories = []
+    }
+    return categories
+}
+
+const getSortDirection = () => JSON.parse(sessionStorage.getItem('sortAsc')) || false
+const setSortDirection = (ascending) => sessionStorage.setItem('sortAsc', ascending)
+
+const getCollapsedIds = () => JSON.parse(sessionStorage.getItem('collapsedIds')) || []
+const setCollapsedIds = (list) => sessionStorage.setItem('collapsedIds', JSON.stringify(list))
+
+module.exports = {
+    getVisible,
+    hideCategory,
+    showCategory,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    setSort,
+    getSortDirection,
+    setSortDirection,
+    getCollapsedCategory,
+    possibleFilters,
+}
+
+},{}]},{},[4]);
+    </script>
+  </footer>
+  </body>
+</html>
