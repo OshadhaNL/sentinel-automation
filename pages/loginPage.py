@@ -242,3 +242,44 @@ class LoginPage:
         expect(self.page).to_have_url(
             re.compile(r".*/nolimit/app/home/?$")
         )
+
+    # ------------------------------
+    # Additional negative-test helpers
+    # ------------------------------
+
+    def verify_authentication_rejected(self):
+        """Require an error notification as well as remaining unauthenticated."""
+        self.verify_still_on_login_page()
+        expect(self.error_notification.first).to_be_visible(timeout=10000)
+
+    def verify_email_format_rejected(self):
+        """The application may validate inline or via an Ant Design notification."""
+        self.verify_still_on_login_page()
+        expect(
+            self.page.locator('label[for="email"] .err-meg:visible, '
+                              '.ant-notification-notice-error:visible').first
+        ).to_be_visible(timeout=5000)
+
+    def verify_no_authenticated_home(self):
+        expect(self.page).not_to_have_url(re.compile(r".*/nolimit/app/home/?$"))
+
+    def verify_no_executable_markup(self, marker: str):
+        """A supplied marker must not be inserted as an executable HTML element."""
+        assert self.page.locator(f'[data-login-xss-marker="{marker}"]').count() == 0, (
+            'Untrusted login input was rendered as HTML'
+        )
+
+    def verify_password_not_in_url(self, password: str):
+        assert password not in self.page.url, 'Password leaked into URL'
+
+    def submit_with_enter(self):
+        self.password_input.press('Enter')
+
+    def clear_credentials(self):
+        self.email_input.fill('')
+        self.password_input.fill('')
+
+    def verify_login_fields_usable(self):
+        expect(self.email_input).to_be_enabled()
+        expect(self.password_input).to_be_enabled()
+        expect(self.login_button).to_be_enabled()
