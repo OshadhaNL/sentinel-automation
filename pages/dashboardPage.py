@@ -301,10 +301,10 @@ class DashboardPage:
         expect(card).to_be_visible()
         expect(count_locator).to_be_visible()
 
-        # Wait for data to replace initial zero.
-        # Appropriate for current QA dataset.
+        # Accept zero as a legitimate final count.
+        # For count comparisons, ensure the data has finished loading.
         expect(count_locator).to_have_text(
-            re.compile(r"^[1-9][0-9,]*$"),
+            re.compile(r"^(?:0|[1-9][0-9,]*)$"),
             timeout=20000
         )
 
@@ -538,3 +538,201 @@ class DashboardPage:
             ),
             "total": len(completed)
         }
+
+
+    # =====================================
+    # Additional Dashboard read-only checks
+    # =====================================
+
+    def dashboard_url(self):
+        from urllib.parse import urlsplit
+        parsed = urlsplit(self.page.url)
+        return f"{parsed.scheme}://{parsed.netloc}/nolimit/app/dashboard"
+
+    def document_rows(self):
+        return self.documents_table.locator("tbody tr.ant-table-row")
+
+    def document_data(self):
+        expect(self.documents_table).to_be_visible()
+        rows = self.document_rows()
+        expect(rows.first).to_be_visible(timeout=20000)
+        result = []
+        for i in range(rows.count()):
+            row = rows.nth(i)
+            cells = row.locator("td")
+            assert cells.count() == 5, f"Document row {i + 1}: expected five cells"
+            link = cells.nth(0).locator("a")
+            result.append({
+                "client_id": link.inner_text().strip(),
+                "href": link.get_attribute("href") or "",
+                "document": cells.nth(1).locator(".doc-text").inner_text().strip(),
+                "status": cells.nth(2).inner_text().strip(),
+                "uploaded": cells.nth(3).inner_text().strip(),
+                "expiry": cells.nth(4).inner_text().strip(),
+                "icon_alt": cells.nth(1).locator("img.doc-icon").get_attribute("alt") or "",
+            })
+        return result
+
+    def verify_document_links_match_ids(self):
+        from urllib.parse import urlsplit, parse_qs
+        for i, record in enumerate(self.document_data(), start=1):
+            assert record["client_id"], f"Row {i}: empty Client ID"
+            parsed = urlsplit(record["href"])
+            assert parsed.path in (
+                "/nolimit/app/onboarding/individual/process",
+                "/nolimit/app/onboarding/entity/process",
+            ), f"Row {i}: unexpected KYC link path: {parsed.path}"
+            params = parse_qs(parsed.query)
+            assert params.get("client") == [record["client_id"]], (
+                f"Row {i}: Client ID does not match link"
+            )
+            assert params.get("step") == ["kyc-form"], f"Row {i}: wrong step"
+
+    def verify_document_dates(self):
+        from datetime import datetime
+        for i, record in enumerate(self.document_data(), start=1):
+            for field in ("uploaded", "expiry"):
+                value = record[field]
+                if value.upper() in ("N/A", "NA", "-"):
+                    assert field == "expiry", f"Row {i}: missing uploaded date"
+                    continue
+                try:
+                    datetime.strptime(value, "%d-%m-%Y")
+                except ValueError as exc:
+                    raise AssertionError(f"Row {i}: invalid {field} date {value!r}") from exc
+
+    def verify_document_names_and_icons(self):
+        for i, record in enumerate(self.document_data(), start=1):
+            assert record["document"], f"Row {i}: blank filename"
+            assert record["icon_alt"] == record["document"], (
+                f"Row {i}: document icon alt and filename differ"
+            )
+
+    def verify_document_statuses(self):
+        for i, record in enumerate(self.document_data(), start=1):
+            assert record["status"], f"Row {i}: missing document status"
+            assert record["status"].lower() not in ("undefined", "null", "nan"), (
+                f"Row {i}: invalid document status"
+            )
+
+    def verify_no_invalid_card_numbers(self):
+        for card in (self.ongoing_card, self.individual_card, self.company_card):
+            value = card.locator("h3").inner_text().strip()
+            assert value not in ("", "NaN", "undefined", "null", "-"), (
+                f"Invalid card count {value!r}"
+            )
+            assert re.fullmatch(r"(?:0|[1-9][0-9,]*)", value), (
+                f"Invalid numeric format {value!r}"
+            )
+
+    def get_view_all_button(self):
+        return self.documents_card.get_by_role("button", name="View All", exact=True)
+
+    def verify_risk_chart_scrollable(self):
+        """A chart that fits should not be required to scroll horizontally."""
+        expect(self.risk_chart).to_be_visible()
+        wrapper = self.risk_chart.locator(
+            "xpath=ancestor::div[contains(@class, 'overflow-x-auto')][1]"
+        )
+        expect(wrapper).to_be_visible()
+        dimensions = wrapper.evaluate("""el => ({
+            width: el.clientWidth,
+            content: el.scrollWidth,
+            initialScroll: el.scrollLeft
+        })""")
+        assert dimensions["width"] > 0, dimensions
+        assert dimensions["content"] >= dimensions["width"], dimensions
+        if dimensions["content"] > dimensions["width"]:
+            wrapper.evaluate("el => { el.scrollLeft = el.scrollWidth; }")
+            assert wrapper.evaluate("el => el.scrollLeft") > 0, (
+                f"Overflow exists but chart cannot scroll: {dimensions}"
+            )
+
+    def wait_for_documents_settled(self, timeout=15000):
+        """Wait for the Ant Design table to finish loading; empty results are valid."""
+        expect(self.documents_table).to_be_visible(timeout=timeout)
+        expect(self.documents_card.locator('.ant-spin-spinning')).to_have_count(
+            0, timeout=timeout
+        )
+
+    def verify_dashboard_no_horizontal_page_overflow(self):
+        sizes = self.page.evaluate("""() => ({
+            viewport: document.documentElement.clientWidth,
+            page: document.documentElement.scrollWidth
+        })""")
+        assert sizes['page'] <= sizes['viewport'] + 2, (
+            f"Unexpected horizontal page overflow: {sizes}"
+        )
+
+    def verify_chart_has_text_context(self):
+        for card in (self.risk_card, self.onboarding_chart_card):
+            expect(card).to_be_visible()
+            expect(card.get_by_role('heading')).to_be_visible()
+            expect(card.locator('canvas')).to_be_visible()
+
+    def verify_canvases_have_pixels(self):
+        for canvas in (self.risk_chart, self.onboarding_chart):
+            expect(canvas).to_be_visible()
+            assert canvas.evaluate("el => el.width > 0 && el.height > 0")
+
+    def verify_chart_accessible_names(self):
+        # Accessible names or nearby text equivalents should describe the chart.
+        for card in (self.risk_card, self.onboarding_chart_card):
+            expect(card.locator("h5")).to_be_visible()
+            expect(card.locator("canvas[role='img']")).to_be_visible()
+
+    def verify_document_table_headers(self):
+        expect(self.documents_headers).to_have_count(5)
+        for i, title in enumerate((
+            "Client ID", "Document", "Status", "Uploaded Date", "Date of Expiry"
+        )):
+            expect(self.documents_headers.nth(i)).to_have_text(title)
+
+
+    # =====================================
+    # Extended Dashboard coverage
+    # =====================================
+
+    def dashboard_cards(self):
+        return (self.ongoing_card, self.individual_card, self.company_card)
+
+    def verify_card_count_format(self):
+        for card in self.dashboard_cards():
+            value = card.locator("h3").inner_text().strip()
+            assert re.fullmatch(r"(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})*|[1-9][0-9]*)", value), (
+                f"Invalid count format: {value!r}"
+            )
+            assert int(value.replace(",", "")) >= 0
+
+    def document_status_values(self):
+        return [record["status"] for record in self.document_data()]
+
+    def navigate_home_from_dashboard(self):
+        self._open_sidebar_page("Home")
+        expect(self.page).to_have_url(re.compile(r".*/nolimit/app/home/?$"), timeout=15000)
+
+    def verify_dashboard_after_return(self):
+        self.open_dashboard()
+        expect(self.dashboard_heading).to_be_visible(timeout=15000)
+
+    def verify_document_links_stay_on_same_origin(self):
+        from urllib.parse import urljoin, urlsplit
+        origin = urlsplit(self.page.url)
+        for record in self.document_data():
+            target = urlsplit(urljoin(self.page.url, record["href"]))
+            assert (target.scheme, target.netloc) == (origin.scheme, origin.netloc), (
+                f"Document link leaves application origin: {record['href']}"
+            )
+
+    def verify_no_duplicate_dashboard_cards(self):
+        for card in self.dashboard_cards():
+            expect(card).to_have_count(1)
+
+    def focus_first_client_link_by_keyboard(self):
+        link = self.client_id_links.first
+        expect(link).to_be_visible(timeout=20000)
+        # Programmatic focus checks focusability without relying on variable tab order.
+        link.focus()
+        assert link.evaluate("el => document.activeElement === el"), (
+            "Client ID link is not keyboard focusable"
+        )

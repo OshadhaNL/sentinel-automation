@@ -89,9 +89,8 @@ class ProfilesPage:
         self.rows = self.table.locator(
             "tbody.ant-table-tbody tr.ant-table-row"
         )
-        self.pagination = self.table_wrapper.locator(
-            "ul.ant-table-pagination"
-        )
+        # Ant Design pagination can be rendered outside the table wrapper.
+        self.pagination = page.locator("ul.ant-pagination:visible").first
 
     # ==========================================
     # Navigation
@@ -258,8 +257,7 @@ class ProfilesPage:
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
 
-        self.select_my_files()
-
+        # Preserve the caller-selected tab and page for a truthful export check.
         expect(self.table).to_be_visible(timeout=20000)
         expect(self.rows.first).to_be_visible(timeout=20000)
         expect(self.extract_button).to_be_visible(timeout=20000)
@@ -281,7 +279,7 @@ class ProfilesPage:
                 filename = download.suggested_filename
 
                 assert re.fullmatch(
-                    r"profiles_my-files_\d{8}_\d{4}\.xlsx",
+                    r"profiles_(?:my-files|all-files)_\d{8}_\d{4}\.xlsx",
                     filename,
                     re.IGNORECASE
                 ), (
@@ -340,8 +338,6 @@ class ProfilesPage:
                         timeout=20000
                     )
 
-                    self.select_my_files()
-
                     expect(self.rows.first).to_be_visible(
                         timeout=20000
                     )
@@ -358,18 +354,39 @@ class ProfilesPage:
     # ==========================================
 
     def select_my_files(self):
+        """
+        Switch to My Files and reset pagination.
+        """
+
         self.my_files_tab.click()
 
         expect(self.my_files_tab).to_have_class(
-            re.compile(r"\bactive\b")
+            re.compile(r"\bactive\b"),
+            timeout=20000,
         )
 
+        self.wait_for_table()
+        self.go_to_first_page()
+
+        print("Switched to My Files")
+
     def select_all_files(self):
+        """
+        Switch to All Files and reset pagination.
+        """
+
         self.all_files_tab.click()
 
         expect(self.all_files_tab).to_have_class(
-            re.compile(r"\bactive\b")
+            re.compile(r"\bactive\b"),
+            timeout=20000,
         )
+
+        self.wait_for_table()
+        self.go_to_first_page()
+        self.wait_for_profile_records()
+
+        print("Switched to All Files")
 
     def verify_my_files_icon(self):
         expect(self.my_files_icon).to_be_visible()
@@ -471,6 +488,7 @@ class ProfilesPage:
 
         expect(self.table).to_be_visible(timeout=20000)
 
+        self.go_to_first_page()
         while True:
             # Wait until the table is ready.
             expect(self.rows.first).to_be_visible(timeout=20000)
@@ -591,6 +609,19 @@ class ProfilesPage:
 
         return records
 
+    def debug_pagination(self):
+        """Print pagination DOM and visible row details for diagnosis."""
+        print("\n=== Profiles pagination diagnostics ===")
+        print("Visible table rows:", self.rows.count())
+        print("Pagination elements inside wrapper:", self.pagination.count())
+        print("All Ant Design pagination elements:", self.page.locator("ul.ant-pagination").count())
+        print("Next controls:", self.page.locator(".ant-pagination-next").count())
+        for index, locator in enumerate(self.page.locator("ul.ant-pagination").all()):
+            print(f"Pagination HTML [{index}]:", locator.evaluate("el => el.outerHTML"))
+        if self.pagination.count():
+            print("Active page:", self.pagination.locator(".ant-pagination-item-active").all_inner_texts())
+        print("Current page IDs:", [r["client_id"] for r in self.get_current_page_records(allow_empty=True)])
+
     # ==========================================
     # Client ID navigation
     # ==========================================
@@ -611,7 +642,7 @@ class ProfilesPage:
 
         return client_id
 
-    def verify_screening_navigation(self, client_id):
+    def verify_verification_navigation(self, client_id):
         expect(self.page).to_have_url(
             re.compile(
                 r"/nolimit/app/profiles/"
@@ -622,3 +653,167 @@ class ProfilesPage:
             ),
             timeout=20000
         )
+
+
+    # Additional listing-page helpers (Phase 1)
+    def clear_search(self):
+        expect(self.clear_button).to_be_visible()
+        self.clear_button.click()
+        expect(self.search_input).to_have_value("")
+
+    def current_client_ids(self):
+        return [r["client_id"] for r in self.get_current_page_records(allow_empty=True)]
+
+    def assert_rows_match_search(self, query):
+        records = self.get_current_page_records(allow_empty=True)
+        for record in records:
+            assert query.casefold() in record["client_id"].casefold() or query.casefold() in record["name"].casefold(), record
+        return records
+
+    def wait_for_search_to_settle(self):
+        # Ant Design loading indicator, when present.
+        spinner = self.table_wrapper.locator('.ant-spin-spinning')
+        expect(spinner).to_have_count(0, timeout=20000)
+
+    def verify_table_row_integrity(self):
+        from datetime import datetime
+        for record in self.get_current_page_records(allow_empty=True):
+            assert re.fullmatch(r'SENTINEL[A-Z0-9]+', record['client_id']), record
+            assert record['name'], record
+            assert record['type'].casefold() in ('individual', 'entity'), record
+            assert record['status'], record
+            datetime.strptime(record['onboarded_date'], '%d-%m-%Y')
+            assert record['risk_rating'].casefold() in ('low', 'medium', 'high'), record
+            assert record['onboarded_by'], record
+
+    def get_profile_link_info(self, index=0):
+        row = self.rows.nth(index)
+        expect(row).to_be_visible()
+        link = row.locator('td').first.locator('a.table-link')
+        return row.locator('td').nth(2).inner_text().strip().lower(), link.inner_text().strip(), link.get_attribute('href')
+
+    def go_to_first_page(self):
+        """
+        Navigate to page 1 and wait for pagination to update.
+        """
+
+        if self.pagination.count() == 0:
+            return
+
+        active_page = self.pagination.locator(
+            ".ant-pagination-item-active"
+        )
+
+        current_page = active_page.inner_text().strip()
+
+        print(f"Current page before reset: {current_page}")
+
+        if current_page == "1":
+            return
+
+        first_page = self.pagination.locator(
+            ".ant-pagination-item-1"
+        )
+
+        expect(first_page).to_be_visible(timeout=10000)
+
+        first_page.click()
+
+        expect(active_page).to_have_text(
+            "1",
+            timeout=20000,
+        )
+
+        self.wait_for_table()
+
+        print(
+            "Current page after reset:",
+            active_page.inner_text().strip(),
+        )
+
+    def wait_for_table(self):
+        """
+        Wait until the Profiles table is visible
+        and any active loading spinner disappears.
+        """
+        expect(self.table).to_be_visible(timeout=20000)
+
+        spinner = self.table_wrapper.locator(".ant-spin-spinning")
+
+        expect(spinner).to_have_count(
+            0,
+            timeout=20000,
+        )
+
+    # Extended regression helpers: deterministic waits, dates, pagination.
+    def wait_for_profile_records(self, timeout=20000):
+        expect(self.table).to_be_visible(timeout=timeout)
+        expect(self.rows.first).to_be_visible(timeout=timeout)
+        expect(self.rows.first.locator("td").first).to_contain_text(
+            re.compile(r"SENTINEL[A-Z0-9]+"), timeout=timeout
+        )
+
+    def active_page_number(self):
+        if self.pagination.count() == 0:
+            return 1
+        return int(self.pagination.locator('.ant-pagination-item-active').inner_text().strip())
+
+    def pagination_control(self, direction):
+        assert direction in ('next', 'prev')
+        return self.pagination.locator(f'.ant-pagination-{direction}')
+
+    def pagination_disabled(self, direction):
+        if self.pagination.count() == 0:
+            return True
+        control = self.pagination_control(direction)
+        return (control.get_attribute('aria-disabled') == 'true'
+                or 'ant-pagination-disabled' in (control.get_attribute('class') or ''))
+
+    def navigate_page(self, direction):
+        assert not self.pagination_disabled(direction), f'{direction} is disabled'
+        old_page = self.active_page_number()
+        old_ids = self.current_client_ids()
+        self.pagination_control(direction).click()
+        expect(self.pagination.locator('.ant-pagination-item-active')).not_to_have_text(
+            str(old_page), timeout=20000)
+        self.wait_for_table()
+        # Wait for the row data to change, not only the pagination number.
+        import time
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            ids = self.current_client_ids()
+            if ids and ids != old_ids:
+                return ids
+            self.page.wait_for_timeout(150)
+        raise AssertionError(f'Page changed from {old_page} but table records did not update')
+
+    def set_date_range_text(self, start, end):
+        """Input dates using the Ant Design date-field format shown in the UI."""
+        assert start <= end, 'Use ordered dates for a valid date-range test'
+        for locator, value in ((self.start_date, start), (self.end_date, end)):
+            locator.click()
+            locator.fill(value)
+            locator.press('Tab')
+        self.wait_for_table()
+
+    def clear_date_range(self):
+        clear = self.date_picker.locator('.ant-picker-clear')
+        self.date_picker.hover()
+        expect(clear).to_be_visible(timeout=10000)
+        clear.click()
+        expect(self.start_date).to_have_value('')
+        expect(self.end_date).to_have_value('')
+        self.wait_for_table()
+
+    def wait_for_search_results(self, query, timeout_ms=20000):
+        """Wait until search results contain no unrelated records."""
+        import time
+        deadline = time.monotonic() + timeout_ms / 1000
+        while time.monotonic() < deadline:
+            self.wait_for_table()
+            records = self.get_current_page_records(allow_empty=True)
+            if all(query.casefold() in (r['client_id'] + ' ' + r['name']).casefold()
+                   for r in records):
+                return records
+            self.page.wait_for_timeout(200)
+        raise AssertionError(f'Search still shows unrelated records for {query!r}')
