@@ -1,10 +1,15 @@
 
 import re
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import (
+    Page,
+    expect,
+    TimeoutError as PlaywrightTimeoutError,
+)
 
 
 class LoginPage:
+
     def __init__(self, page: Page):
         self.page = page
 
@@ -63,15 +68,48 @@ class LoginPage:
     # ------------------------------
 
     def open(self, url: str):
-        self.page.goto(
-            url,
-            wait_until="domcontentloaded",
-            timeout=60000
-        )
+        """
+        Open the login page.
 
-        expect(self.login_heading).to_be_visible(
-            timeout=15000
-        )
+        Retry navigation once if the page does not reach
+        DOMContentLoaded within 60 seconds.
+
+        A successful navigation must also display the
+        login heading.
+        """
+
+        max_attempts = 2
+        navigation_timeout = 60000
+
+        for attempt in range(1, max_attempts + 1):
+
+            try:
+                self.page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=navigation_timeout,
+                )
+
+                # Verify that the login page is ready.
+                expect(self.login_heading).to_be_visible(
+                    timeout=15000
+                )
+
+                return
+
+            except PlaywrightTimeoutError as error:
+
+                if attempt == max_attempts:
+                    raise PlaywrightTimeoutError(
+                        f"Login page navigation timed out after "
+                        f"{max_attempts} attempts. URL: {url}"
+                    ) from error
+
+                print(
+                    f"[LoginPage] Navigation timeout "
+                    f"(attempt {attempt}/{max_attempts}). "
+                    "Retrying..."
+                )
 
     def enter_email(self, email: str):
         self.email_input.fill(email)
@@ -105,11 +143,15 @@ class LoginPage:
 
     def verify_email_input(self):
         expect(self.email_input).to_be_visible()
-        expect(self.email_input).to_have_attribute("type", "email")
+        expect(self.email_input).to_have_attribute(
+            "type", "email"
+        )
 
     def verify_password_input(self):
         expect(self.password_input).to_be_visible()
-        expect(self.password_input).to_have_attribute("type", "password")
+        expect(self.password_input).to_have_attribute(
+            "type", "password"
+        )
 
     def verify_email_placeholder(self):
         expect(self.email_input).to_have_attribute(
@@ -162,8 +204,7 @@ class LoginPage:
             "Required asterisk is missing"
         )
 
-        # Colour observed in DevTools, subject to
-        # confirmation of the exact CSS 'color' property.
+        # Colour observed in DevTools.
         assert result["color"] == "rgb(235, 87, 87)", (
             f"Expected red asterisk, got {result['color']}"
         )
@@ -248,36 +289,56 @@ class LoginPage:
     # ------------------------------
 
     def verify_authentication_rejected(self):
-        """Require an error notification as well as remaining unauthenticated."""
-        self.verify_still_on_login_page()
-        expect(self.error_notification.first).to_be_visible(timeout=10000)
-
-    def verify_email_format_rejected(self):
-        """The application may validate inline or via an Ant Design notification."""
+        """
+        Require an error notification as well as
+        remaining unauthenticated.
+        """
         self.verify_still_on_login_page()
         expect(
-            self.page.locator('label[for="email"] .err-meg:visible, '
-                              '.ant-notification-notice-error:visible').first
+            self.error_notification.first
+        ).to_be_visible(timeout=10000)
+
+    def verify_email_format_rejected(self):
+        """
+        The application may validate inline or
+        via an Ant Design notification.
+        """
+        self.verify_still_on_login_page()
+
+        expect(
+            self.page.locator(
+                'label[for="email"] .err-meg:visible, '
+                '.ant-notification-notice-error:visible'
+            ).first
         ).to_be_visible(timeout=5000)
 
     def verify_no_authenticated_home(self):
-        expect(self.page).not_to_have_url(re.compile(r".*/nolimit/app/home/?$"))
+        expect(self.page).not_to_have_url(
+            re.compile(r".*/nolimit/app/home/?$")
+        )
 
     def verify_no_executable_markup(self, marker: str):
-        """A supplied marker must not be inserted as an executable HTML element."""
-        assert self.page.locator(f'[data-login-xss-marker="{marker}"]').count() == 0, (
-            'Untrusted login input was rendered as HTML'
+        """
+        A supplied marker must not be inserted
+        as an executable HTML element.
+        """
+        assert self.page.locator(
+            f'[data-login-xss-marker="{marker}"]'
+        ).count() == 0, (
+            "Untrusted login input was rendered as HTML"
         )
 
     def verify_password_not_in_url(self, password: str):
-        assert password not in self.page.url, 'Password leaked into URL'
+        assert password not in self.page.url, (
+            "Password leaked into URL"
+        )
 
     def submit_with_enter(self):
-        self.password_input.press('Enter')
+        self.password_input.press("Enter")
 
     def clear_credentials(self):
-        self.email_input.fill('')
-        self.password_input.fill('')
+        self.email_input.fill("")
+        self.password_input.fill("")
 
     def verify_login_fields_usable(self):
         expect(self.email_input).to_be_enabled()
