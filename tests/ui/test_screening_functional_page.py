@@ -259,16 +259,14 @@ class TestScreeningResolution:
 
         expect(results.apply_button).to_have_count(0)
 
+
     def test_negative_apply_without_resolution(
         self,
         resolution_results,
     ):
-
-        results = resolution_results
-
-        results.select_row(0)
-
-        expect(results.apply_button).to_be_disabled()
+        resolution_results.assert_apply_without_resolution(
+            source="Unresolved Hits"
+        )
 
     def test_negative_resolution_selection_without_apply(
         self,

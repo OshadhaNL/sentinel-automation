@@ -349,12 +349,12 @@ class ScreeningResultsPage:
             "Unresolved Hits": "Unresolved",
             "Positive Hits": "Positive Hit",
             "False Hits": "False Hit",
-            "Possible Hits": "Possible Hit",
+            "Possible Hits": "Possible",
         }[category]
 
         pattern = re.compile(
-            rf"^{re.escape(expected_resolution)}s?$",
-            re.I,
+            rf"^\s*{re.escape(expected_resolution)}\s*$",
+            re.IGNORECASE,
         )
 
         expect(self.rows.first).to_be_visible(
