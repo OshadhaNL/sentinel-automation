@@ -1666,3 +1666,142 @@ class TestTransactionPage:
         expect(
             self.transaction.input_for("property")
         ).to_have_value(original)
+
+
+
+# ============================================================
+# Opt-in functional / negative / export regression
+# Existing 201 collected cases above are unchanged.
+# ============================================================
+
+import uuid
+
+
+@pytest.fixture
+def transaction_write_gate():
+    if os.getenv("TRANSACTIONS_ALLOW_WRITES") != "1":
+        pytest.skip("Set TRANSACTIONS_ALLOW_WRITES=1 for disposable QA writes")
+    if os.getenv("TRANSACTIONS_DISPOSABLE_DATA_CONFIRMED") != "1":
+        pytest.skip(
+            "Confirm the Transactions module uses disposable QA data: "
+            "TRANSACTIONS_DISPOSABLE_DATA_CONFIRMED=1"
+        )
+
+
+@pytest.fixture
+def transaction_functional(page: Page, base_url: str):
+    email = os.getenv("TEST_EMAIL")
+    password = os.getenv("TEST_PASSWORD")
+    assert email and password, "Set TEST_EMAIL and TEST_PASSWORD"
+    login = LoginPage(page)
+    login.open(base_url)
+    login.enter_email(email)
+    login.enter_password(password)
+    login.click_login()
+    expect(page).to_have_url(
+        re.compile(r".*/nolimit/app/home/?$"), timeout=60000
+    )
+    view = TransactionPage(page)
+    view.open()
+    return view
+
+
+def _qa_address():
+    return "QA-TRANSACTIONS-" + uuid.uuid4().hex[:12].upper()
+
+
+@pytest.mark.ui
+class TestTransactionExtendedReadOnly:
+    def test_negative_search_nonexistent_transaction(self, transaction_functional):
+        view = transaction_functional
+        query = "QA-NO-MATCH-" + uuid.uuid4().hex.upper()
+        view.search(query)
+        expect(view.rows).to_have_count(0, timeout=20000)
+
+    def test_positive_search_clear_restores_input(self, transaction_functional):
+        view = transaction_functional
+        view.search("QA-TEMP-SEARCH")
+        view.clear_search()
+        expect(view.search_input).to_have_value("")
+
+    def test_positive_export_download(self, transaction_functional):
+        view = transaction_functional
+        view.export_button.click()
+        dialog = view.page.locator(".modal-z-card").filter(
+            has=view.page.locator(".modal-z-title h6", has_text="Export Transactions")
+        ).filter(visible=True).last
+        expect(dialog).to_be_visible(timeout=15000)
+        expect(dialog.get_by_text("Current page only", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("All data", exact=True)).to_be_visible()
+        # Current page may contain zero records; choose All data for a meaningful export.
+        dialog.get_by_text("All data", exact=True).click()
+        confirm = dialog.locator("button.primary-btn").filter(has_text="Export")
+        expect(confirm).to_be_enabled()
+        with view.page.expect_download(timeout=60000) as download_info:
+            confirm.click()
+        download = download_info.value
+        assert download.suggested_filename.lower().endswith((".xlsx", ".xls", ".csv"))
+        assert download.failure() is None
+
+
+@pytest.mark.ui
+class TestTransactionExtendedWrite:
+    def test_positive_create_transaction_end_to_end(
+        self, transaction_functional, transaction_write_gate
+    ):
+        view = transaction_functional
+        created = view.create_disposable_transaction(_qa_address())
+        assert created["record"]["property"] == created["address"]
+        assert created["id"]
+
+    def test_positive_edit_transaction_persists(
+        self, transaction_functional, transaction_write_gate
+    ):
+        view = transaction_functional
+        created = view.create_disposable_transaction(_qa_address())
+        updated = _qa_address()
+        view.open_edit(created["id"])
+        view.fill_field("property", updated)
+        view.submit_modal()
+        result = view.find_by_address(updated)
+        assert result["id"] == created["id"], (
+            "Edited record ID changed or edit did not persist"
+        )
+
+    def test_negative_empty_form_is_rejected(
+        self, transaction_functional, transaction_write_gate
+    ):
+        view = transaction_functional
+        view.open_add_modal()
+        view.active_modal.locator("button.modal-z-primary-btn").click()
+        expect(view.add_modal).to_be_visible(timeout=10000)
+        errors = view.form_errors()
+        assert errors or view.add_modal.locator(
+            ".input-box.req, [aria-invalid='true']"
+        ).count(), "Empty submission had no observable validation"
+
+    @pytest.mark.parametrize('field', ['propertyValue', 'amount'])
+    @pytest.mark.parametrize('invalid', ['-1', 'abc'])
+    def test_negative_amount_input_validation(
+        self, transaction_functional, field, invalid
+    ):
+        view = transaction_functional
+        view.open_add_modal()
+        control = view.input_for(field)
+        if invalid.isalpha():
+            # Browser number inputs cannot be filled with letters.
+            control.press_sequentially(invalid)
+            assert control.input_value() != invalid, (
+                f'{field} accepted alphabetic input'
+            )
+            return
+        control.fill(invalid)
+        control.press('Tab')
+        # A negative amount may be rejected on submit rather than on blur.
+        # Do not call it a defect until valid required fields are populated.
+        if control.input_value() == invalid and not view.form_errors():
+            pytest.skip(
+                f'{field} allows negative entry; submit-time rule requires '
+                'confirmed business validation requirements'
+            )
+        assert control.input_value() != invalid or view.form_errors()

@@ -155,15 +155,30 @@ class TransactionPage:
         )
 
     def require_party_enabled(self, role):
+        """Wait for asynchronous Ant Design option loading, without bypassing disabled UI."""
         dropdown = self.party_dropdown(role)
         expect(dropdown).to_be_visible(timeout=15000)
-
-        if dropdown.locator(
-            'input.ant-select-selection-search-input'
-        ).is_disabled():
-            pytest.skip(
-                f"{role.title()} selection is disabled by the QA application"
+        try:
+            expect(dropdown).not_to_have_class(
+                re.compile(r"\bant-select-loading\b"), timeout=45000
             )
+            expect(dropdown).not_to_have_class(
+                re.compile(r"\bant-select-disabled\b"), timeout=15000
+            )
+            expect(dropdown.locator("input.ant-select-selection-search-input")).to_be_enabled(
+                timeout=15000
+            )
+        except AssertionError as exc:
+            details = {
+                "role": role,
+                "html": dropdown.evaluate("el => el.outerHTML")[:1500],
+                "modal": self.active_modal.inner_text()[:1200],
+                "url": self.page.url,
+            }
+            raise AssertionError(
+                f"{role} selection unavailable after waiting for async loading. "
+                f"Diagnostics: {details!r}"
+            ) from exc
 
     # --------------------------------------------------
     # Search
@@ -720,19 +735,43 @@ class TransactionPage:
         )
 
     def submit_modal(self):
+        """Submit and report actual validation / network failures if the modal stays open."""
         modal = self.active_modal
-
-        expect(
-            modal.locator(
-                "button.modal-z-primary-btn"
-            )
-        ).to_be_enabled()
-
-        modal.locator(
-            "button.modal-z-primary-btn"
-        ).click()
-
-        expect(modal).to_be_hidden(timeout=30000)
+        button = modal.locator("button.modal-z-primary-btn")
+        expect(button).to_be_enabled(timeout=15000)
+        responses = []
+        def capture(response):
+            if response.request.method in ("POST", "PUT", "PATCH"):
+                responses.append((response.status, response.url))
+        self.page.on("response", capture)
+        try:
+            button.click()
+            try:
+                expect(modal).to_be_hidden(timeout=30000)
+            except AssertionError as exc:
+                errors = self.form_errors()
+                details = {
+                    "validation_errors": errors,
+                    "invalid_fields": modal.locator(
+                        "[aria-invalid='true'], .ant-form-item-has-error"
+                    ).count(),
+                    "write_responses": responses,
+                    "modal_text": modal.inner_text()[:1500],
+                    "seller_tags": self.party_tags("seller").all_inner_texts(),
+                    "buyer_tags": self.party_tags("buyer").all_inner_texts(),
+                    "required_values": {
+                        "property": self.field_value("property"),
+                        "propertyType": self.selected_option("propertyType"),
+                        "paymentMethod": self.selected_option("paymentMethod"),
+                        "currency": self.selected_option("currency"),
+                        "date": modal.locator('input[placeholder="Select date and time"]').input_value(),
+                    },
+                }
+                raise AssertionError(
+                    f"Transaction submission did not close modal. {details!r}"
+                ) from exc
+        finally:
+            self.page.remove_listener("response", capture)
 
     # --------------------------------------------------
     # Form fields
@@ -1135,3 +1174,82 @@ class TransactionPage:
         )
 
         self.cancel_modal()
+
+
+
+    # Extended transaction helpers
+    def form_errors(self):
+        return [s.strip() for s in self.active_modal.locator(
+            '.ant-form-item-explain-error, .ant-form-item-explain, '
+            '[role="alert"], .err-meg, .war-meg'
+        ).all_text_contents() if s.strip()]
+
+    def select_first_party_for_test(self, role, exclude_names=()):
+        """Select a real, distinct client and confirm the correct role in the details grid."""
+        self.require_party_enabled(role)
+        dropdown = self.party_dropdown(role)
+        before = self.party_tags(role).count()
+        dropdown.locator(".ant-select-selector").click()
+        options = self.page.locator(
+            ".ant-select-dropdown:visible "
+            ".ant-select-item-option:not(.ant-select-item-option-disabled)"
+        )
+        expect(options.first).to_be_visible(timeout=20000)
+        excluded = {name.strip().casefold() for name in exclude_names}
+        candidates = [name.strip() for name in options.all_inner_texts()]
+        selected_index = next(
+            (i for i, name in enumerate(candidates)
+             if name and name.casefold() not in excluded), None
+        )
+        assert selected_index is not None, (
+            f"No distinct selectable {role} client. "
+            f"Excluded={sorted(excluded)!r}; options={candidates!r}. "
+            "Provide a second disposable client with the appropriate role."
+        )
+        name = candidates[selected_index]
+        options.nth(selected_index).click()
+        expect(self.party_tags(role)).to_have_count(before + 1, timeout=15000)
+        expect(self.party_tags(role).last).to_contain_text(name, timeout=15000)
+        self.verify_party_details_for_test(role, name)
+        return name
+
+    def verify_party_details_for_test(self, role, name):
+        """The Seller/Buyer tabs filter the details grid; check each independently."""
+        expected_role = "Seller" if role == "seller" else "Buyer"
+        self.select_party_tab(expected_role)
+        matching = self.active_modal.locator(".grid.grid-cols-3.border-t").filter(
+            has_text=name
+        )
+        expect(matching.first).to_be_visible(timeout=15000)
+        values = matching.first.locator("span.p-3").all_inner_texts()
+        assert len(values) >= 3 and values[2].strip() == expected_role, (
+            f"Selected {role} {name!r} is not shown with role {expected_role}: "
+            f"{values!r}"
+        )
+
+    def select_valid_form_date_for_test(self):
+        # Existing calendar selector handles Ant Design dates.
+        selected = date.today().isoformat()
+        self.select_form_date(selected)
+        return selected
+
+    def create_disposable_transaction(self, address, sale_value='250000',
+                                      deposit='25000', currency='AUD'):
+        self.open_add_modal()
+        self.fill_transaction_details(
+            address=address, property_type='Residential',
+            payment_method='Bank Transfer', currency=currency,
+            sale_value=sale_value, deposit=deposit,
+        )
+        chosen_date = self.select_valid_form_date_for_test()
+        seller = self.select_first_party_for_test('seller')
+        buyer = self.select_first_party_for_test('buyer', exclude_names=(seller,))
+        assert seller.casefold() != buyer.casefold(), 'Seller and Buyer must be distinct clients'
+        self.verify_party_details_for_test('seller', seller)
+        self.verify_party_details_for_test('buyer', buyer)
+        self.submit_modal()
+        record = self.find_by_address(address)
+        assert record['id'], 'Created transaction missing ID'
+        return dict(id=record['id'], address=address,
+                    seller=seller, buyer=buyer,
+                    date=chosen_date, record=record)
